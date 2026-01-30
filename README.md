@@ -9,7 +9,7 @@
    Just like Russian Roulette, except you control the bullet. <br>
     Which, I guess, makes it normal Roulette... the kind we all necessarily play when a revolver is involved. <br>
     <br>  This repository is a munitions factory, designed for "Drop-and-Load" simplicity. <br>
-    <br>-------------------------------------------------------
+    <linebreak>
       You do not need to know C++. You do not need to convert your duckyscript. You do not need to install Arduino. <br>
     Just load that gun of yours and cock it. <br><br>
     
