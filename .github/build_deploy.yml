@@ -1,0 +1,109 @@
+name: Build and Deploy Flasher
+
+on:
+  push:
+    paths:
+      - 'src/**' # Trigger on changes to payloads
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install Core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls http://digistump.com/package_digistump_index.json
+          arduino-cli core update-index
+          arduino-cli core install digistump:avr
+
+      - name: Compile Windows Payload
+        run: |
+          # We compile the main sketch, but we need to ensure the correct payload header is selected.
+          # For this demo, we assume the user edits the files in src/
+          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/windows ./src/1_windows
+          mv ./build/windows/*.hex ./build/payload_windows.hex
+
+      # (Repeat for Mac/Linux or make a loop if you want all 3)
+
+      - name: Upload Hex Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: ./build/*.hex
+
+  deploy-web-flasher:
+    needs: compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Web Flasher Code
+        uses: actions/checkout@v3
+        
+      - name: Download Firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: ./public/firmware
+
+      - name: Create Web Flasher HTML
+        run: |
+          mkdir -p public
+          # We are creating the index.html on the fly to include the firmware links
+          cat <<EOF > public/index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Classroom Weaponizer</title>
+            <script src="https://cdn.jsdelivr.net/npm/micronucleus@0.1.0/dist/micronucleus.min.js"></script>
+          </head>
+          <body style="background: #111; color: #0f0; font-family: monospace; text-align: center; padding-top: 50px;">
+            <h1>USB ARMORY</h1>
+            <p>1. Plug in Digispark.</p>
+            <p>2. Click Flash.</p>
+            <br>
+            <button id="flashBtn" style="padding: 20px; font-size: 24px; background: #000; color: #f00; border: 2px solid #f00; cursor: pointer;">ARM DEVICE</button>
+            <div id="status">Waiting...</div>
+
+            <script>
+              document.getElementById('flashBtn').addEventListener('click', async () => {
+                const status = document.getElementById('status');
+                try {
+                  status.innerText = "Requesting USB Access...";
+                  // Connect to device (Standard Digispark VID/PID)
+                  const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
+                  
+                  status.innerText = "Downloading Firmware...";
+                  const response = await fetch('./firmware/payload_windows.hex');
+                  const hexData = await response.arrayBuffer();
+                  
+                  status.innerText = "Erasing & Flashing...";
+                  const nucleus = new Micronucleus(device);
+                  await nucleus.upload(hexData);
+                  
+                  status.innerText = "UPLOAD COMPLETE. UNPLUG NOW.";
+                  status.style.color = "#fff";
+                } catch (e) {
+                  status.innerText = "ERROR: " + e;
+                }
+              });
+            </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
