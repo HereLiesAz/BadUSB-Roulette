@@ -44,7 +44,7 @@
 ## Operational Instructions
  
   ### Phase 1: The Setup
-  1. Fork this Repository to your own GitHub account.
+  #### 1. Fork this Repository to your own GitHub account.
   
   2. Enable GitHub Actions in the "Actions" tab.
   
