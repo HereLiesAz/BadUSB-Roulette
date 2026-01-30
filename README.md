@@ -4,13 +4,12 @@
     The barrel holds three bullets. <br>
       Plug the BadUSB in to see which bullet is in the chamber. <br>
         Unplug it to select the next bullet. <br>
-          Or leave it in to fire that bullet. <br>
-      Just like Russian Roulette, except you control the bullet. <br>
-<br>
-    Which, I guess, makes it normal Roulette... the kind everyone necessarily plays when a revolver is involved. <br>
-    <br>
-    This repository is a munitions factory, designed for "Drop-and-Load" simplicity. <br>
-    <br>
+          Or leave it in to fire that bullet. <br><br>
+          
+   Just like Russian Roulette, except you control the bullet. <br>
+    Which, I guess, makes it normal Roulette... the kind we all necessarily play when a revolver is involved. <br>
+    <br>  This repository is a munitions factory, designed for "Drop-and-Load" simplicity. <br>
+    <br>-------------------------------------------------------
       You do not need to know C++. You do not need to convert your duckyscript. You do not need to install Arduino. <br>
     Just load that gun of yours and cock it. <br><br>
     
