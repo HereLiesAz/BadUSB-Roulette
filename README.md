@@ -14,32 +14,32 @@
       You do not need to know C++. You do not need to convert your duckyscript. You do not need to install Arduino. <br>
     Just load that gun of yours and cock it. <br>
     
-              BasUSB-Roulette/
-**Don't touch.  ├── .github/workflows/
-**Don't touch.  │   └── factory.yml        <-- THE ENGINE. This GitHub Action watches for your
-              │                              changes, converts your scripts, compiles the
-              │                              firmware, and deploys the Flasher Website.
-              │
-Don't touch.  ├── src/
-              │   ├── chamber-one/       <-- WINDOWS PAYLOADS, for example. Drop .txt or .ino files here.
-*Delete.       │   │   ├── 00_setup.txt
-**Replace.      │   │   └── 01_exploit.txt
-              │   │
-              │   ├── chamber-two/       <-- MAC PAYLOADS, for example. Drop files here.
-**Replace.      │   │   └── payload.txt
-              │   │
-              │   ├── chamber-three/     <-- LINUX/MOBILE PAYLOADS, for example. Drop files here.
-**Replace.      │   │   └── payload.txt
-              │
-**Don't touch.  ├── scripts/
-              │   └── weaponizer.py      <-- THE TRANSLATOR. A Python script that converts
-              │                              DuckyScript to C++ and merges multiple files
-              │                              into a single payload header.
-              │
-**Don't touch.  ├── config.h               <-- HARDWARE SETTINGS. Defines pinouts and timings.
-              │
-**Don't touch.  └── Roulette.ino           <-- THE TRIGGER. The main logic that handles
-                                             entropy, LED signaling, and payload execution.
+                  BasUSB-Roulette/
+    Don't touch.  ├── .github/workflows/
+    Don't touch.  │   └── factory.yml        <-- THE ENGINE. This GitHub Action watches for your
+                  │                              changes, converts your scripts, compiles the
+                  │                              firmware, and deploys the Flasher Website.
+                  │
+    Don't touch.  ├── src/
+                  │   ├── chamber-one/       <-- WINDOWS PAYLOADS, for example. Drop .txt or .ino files here.
+    Delete.       │   │   ├── 00_setup.txt
+    Replace.      │   │   └── 01_exploit.txt
+                  │   │
+                  │   ├── chamber-two/       <-- MAC PAYLOADS, for example. Drop files here.
+    Replace.      │   │   └── payload.txt
+                  │   │
+                  │   ├── chamber-three/     <-- LINUX/MOBILE PAYLOADS, for example. Drop files here.
+    Replace.      │   │   └── payload.txt
+                  │
+    Don't touch.  ├── scripts/
+                  │   └── weaponizer.py      <-- THE TRANSLATOR. A Python script that converts
+                  │                              DuckyScript to C++ and merges multiple files
+                  │                              into a single payload header.
+                  │
+    Don't touch.  ├── config.h               <-- HARDWARE SETTINGS. Defines pinouts and timings.
+                  │
+    Don't touch.  └── Roulette.ino           <-- THE TRIGGER. The main logic that handles
+                                                 entropy, LED signaling, and payload execution.
 
 ## Operational Instructions
  
