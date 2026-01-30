@@ -12,7 +12,7 @@
     This repository is a munitions factory, designed for "Drop-and-Load" simplicity. <br>
     <br>
       You do not need to know C++. You do not need to convert your duckyscript. You do not need to install Arduino. <br>
-    Just load that gun of yours and cock it. <br>
+    Just load that gun of yours and cock it. <br><br>
     
                   BasUSB-Roulette/
     Don't touch.  ├── .github/workflows/
@@ -41,6 +41,7 @@
     Don't touch.  └── Roulette.ino           <-- THE TRIGGER. The main logic that handles
                                                  entropy, LED signaling, and payload execution.
 
+<br><br>
 ## Operational Instructions
  
   ### Phase 1: The Setup
@@ -57,9 +58,9 @@
   
   3. Upload your payloads:
   
-   - Duckyscript (.txt): Standard syntax (GUI r, STRING hello, DELAY 500).
+    - Duckyscript (.txt): Standard syntax (GUI r, STRING hello, DELAY 500).
   
-   - Arduino C++ (.ino): Raw code for advanced, raw users.
+    - Arduino C++ (.ino): Raw code for advanced, raw users.
   
   4. Note that files are executed in alphabetical order.
   
@@ -70,13 +71,13 @@
   
   2. The Factory Action is running. It will:
   
-   - Convert your Duckyscript to C++.
+    - Convert your Duckyscript to C++.
   
-   - Compile two firmware versions (Single LED & Dual LED).
+    - Compile two firmware versions (Single LED & Dual LED).
   
-   - Deploy a Web Flasher to your repository's website.
+    - Deploy a Web Flasher to your repository's website.
   
-  ###Phase 4: The Flash
+  ### Phase 4: The Flash
   1. Visit your deployed site: WHATS_YOUR_FACE.github.io/BadUSB-Roulette/
   
   2. Click "ARM DEVICE."
