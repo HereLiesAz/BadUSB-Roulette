@@ -25,10 +25,11 @@ def parse_ducky(line):
     return f"// Unknown Ducky: {line}"
 
 # --- MAIN PROCESSOR ---
+# ALIGNED: These names now match the switch cases in Roulette.ino
 chambers = {
-    "chamber-one": "fire_chamber_one",
-    "chamber-two": "fire_chamber_two",
-    "chamber-three": "fire_chamber_three"
+    "chamber-one": "fire_windows",
+    "chamber-two": "fire_mac",
+    "chamber-three": "fire_nix"
 }
 
 base_path = "src"
