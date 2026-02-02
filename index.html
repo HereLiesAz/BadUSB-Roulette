@@ -358,7 +358,7 @@ function mutate(selector, targetId) {
   if (!script) return;
   logMsg(`MUTATING CHAMBER ${targetId.toUpperCase()} TO ${mode}...`, 'warn');
 
-  // NORMALIZE (Remove specific OS artifacts first)
+  // NORMALIZE
   script = script
     .replace(/GUI r\b/gi, '###RUN###')        // Win
     .replace(/GUI SPACE\b/gi, '###RUN###')    // Mac/iOS
@@ -367,46 +367,26 @@ function mutate(selector, targetId) {
     .replace(/WINDOWS\b/gi, '###GUI###')      // Win
     .replace(/GUI\b/gi, '###GUI###');         // Generic
 
-  // APPLY TARGET SPECIFIC LOGIC
+  // APPLY
   switch(mode) {
     case 'WIN':
-      script = script.replace(/###RUN###/g, 'GUI r');
-      script = script.replace(/###GUI###/g, 'GUI');
-      // Fix modifiers
-      script = script.replace(/OPTION\b/gi, 'ALT');
+      script = script.replace(/###RUN###/g, 'GUI r').replace(/###GUI###/g, 'GUI').replace(/OPTION\b/gi, 'ALT');
       break;
-      
     case 'MAC':
-      script = script.replace(/###RUN###/g, 'GUI SPACE');
-      script = script.replace(/###GUI###/g, 'COMMAND');
-      // Fix modifiers
-      script = script.replace(/ALT\b/gi, 'OPTION');
-      script = script.replace(/CTRL\b/gi, 'COMMAND'); 
+      script = script.replace(/###RUN###/g, 'GUI SPACE').replace(/###GUI###/g, 'COMMAND').replace(/ALT\b/gi, 'OPTION').replace(/CTRL\b/gi, 'COMMAND'); 
       break;
-
     case 'LINUX':
-      script = script.replace(/###RUN###/g, 'ALT F2'); // Gnome Run
-      script = script.replace(/###GUI###/g, 'GUI');
-      // Fix modifiers
-      script = script.replace(/COMMAND\b/gi, 'CTRL');
-      script = script.replace(/OPTION\b/gi, 'ALT');
+      script = script.replace(/###RUN###/g, 'ALT F2').replace(/###GUI###/g, 'GUI').replace(/COMMAND\b/gi, 'CTRL').replace(/OPTION\b/gi, 'ALT');
       break;
-
     case 'ANDROID':
-      // Android is tricky. GUI usually triggers Assistant. 
-      // We will assume GUI b = Browser, but often it's just searching.
-      script = script.replace(/###RUN###/g, 'GUI b'); 
-      script = script.replace(/###GUI###/g, 'GUI');
+      script = script.replace(/###RUN###/g, 'GUI b').replace(/###GUI###/g, 'GUI');
       break;
-      
     case 'IOS':
-      script = script.replace(/###RUN###/g, 'GUI SPACE'); // Spotlight
-      script = script.replace(/###GUI###/g, 'COMMAND');
+      script = script.replace(/###RUN###/g, 'GUI SPACE').replace(/###GUI###/g, 'COMMAND');
       break;
   }
-
   area.value = script;
-  selector.selectedIndex = 0; // Reset dropdown
+  selector.selectedIndex = 0; 
 }
 
 function compileDucky(script) {
@@ -425,10 +405,9 @@ function compileDucky(script) {
       bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
     } 
     else if (cmd === 'STRING') {
-      // Chunking for strings > 255 chars
       for (let i = 0; i < args.length; i += 255) {
         const chunk = args.substring(i, Math.min(i + 255, args.length));
-        bytes.push(0x03, chunk.length); // 0x03 is OP_PRINT
+        bytes.push(0x03, chunk.length); 
         for (let c = 0; c < chunk.length; c++) bytes.push(chunk.charCodeAt(c));
       }
     }
@@ -436,13 +415,13 @@ function compileDucky(script) {
       let key = 0;
       if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
       else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
-      bytes.push(0x02, 0x08, key); // OP_KEY (2) + MOD_GUI (8) + Key
+      bytes.push(0x02, 0x08, key); 
     }
     else if (KEY_MAP[cmd]) { 
       bytes.push(0x02, 0x00, KEY_MAP[cmd]); 
     }
   }
-  bytes.push(0x00); // OP_END
+  bytes.push(0x00); 
   return bytes;
 }
 
@@ -466,39 +445,27 @@ function patchHex(hexString, payloadData) {
       magicIdx = i; break;
     }
   }
-
   if (magicIdx === -1) throw new Error("TEMPLATE INVALID: MAGIC HEADER NOT FOUND");
 
-  // Header is 10 bytes: MAGIC (4) + 3 * OFFSETS (2)
-  let dataStart = magicIdx + 10; 
   let currentOffset = 10;
-  
   function inject(payload, offH_idx, offL_idx) {
-    if (payload.length <= 1) { // Only OP_END
+    if (payload.length <= 1) { 
       buffer[magicIdx + offH_idx] = 0x00;
       buffer[magicIdx + offL_idx] = 0x00;
       return; 
     }
-    
-    // Safety Check: Absolute buffer overflow prevention
     if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE - FLASH OVERFLOW");
 
     buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
-    
-    // Write payload bytes
     let writePtr = magicIdx + currentOffset;
-    for(let b of payload) {
-        buffer[writePtr++] = b;
-    }
-    
+    for(let b of payload) buffer[writePtr++] = b;
     currentOffset += payload.length;
   }
 
   inject(payloadData.c1, 4, 5);
   inject(payloadData.c2, 6, 7);
   inject(payloadData.c3, 8, 9);
-  
   return buffer;
 }
 
@@ -515,16 +482,21 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
     };
     
     logMsg("FETCHING TEMPLATE: " + hw);
-    const resp = await fetch(hw);
-    if (!resp.ok) throw new Error("TEMPLATE MISSING");
-    const hexText = await resp.text();
     
+    // UPDATED: Show the full URL to debug Local vs Remote issues
+    const url = new URL(hw, document.baseURI).href;
+    console.log("Fetching: " + url);
+    
+    const resp = await fetch(hw);
+    if (!resp.ok) throw new Error(`TEMPLATE MISSING: ${url} (Status: ${resp.status})`);
+    
+    const hexText = await resp.text();
     const firmBuffer = patchHex(hexText, payloads);
     
     logMsg("SEARCHING FOR DIGISPARK... (PLUG IN NOW)");
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
-    
     const client = new Micronucleus(device);
+    
     logMsg("FLASHING...", 'warn');
     await client.upload(firmBuffer);
     logMsg("COMPLETE. DISCONNECT.", 'success');
