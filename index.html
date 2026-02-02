@@ -263,3 +263,129 @@ function compileDucky(script) {
     
     // Simple tokenizer
     const parts = line.split(' ');
+    const cmd = parts[0].toUpperCase();
+    const args = parts.slice(1).join(' ');
+
+    if (cmd === 'DELAY') {
+      const ms = parseInt(args);
+      bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
+    } 
+    else if (cmd === 'STRING') {
+      bytes.push(0x02, args.length);
+      for (let i = 0; i < args.length; i++) bytes.push(args.charCodeAt(i));
+    }
+    else if (cmd === 'GUI' || cmd === 'WINDOWS') {
+      let key = 0;
+      if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
+      else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
+      bytes.push(0x02, 0x08, key); 
+    }
+    else if (KEY_MAP[cmd]) {
+      bytes.push(0x02, 0x00, KEY_MAP[cmd]); 
+    }
+  }
+  bytes.push(0x00); 
+  return bytes;
+}
+
+// --- HEX PATCHER (UNCHANGED LOGIC) ---
+function patchHex(hexString, payloadData) {
+  const buffer = new Uint8Array(8192).fill(0xFF); 
+  const lines = hexString.split('\n');
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (line[0] !== ':') continue;
+    const len = parseInt(line.substr(1, 2), 16);
+    const addr = parseInt(line.substr(3, 4), 16);
+    const type = parseInt(line.substr(7, 2), 16);
+    if (type === 0) { 
+      for (let i = 0; i < len; i++) {
+        buffer[addr + i] = parseInt(line.substr(9 + i * 2, 2), 16);
+      }
+    }
+  }
+
+  let magicIdx = -1;
+  for (let i = 0; i < buffer.length - 4; i++) {
+    if (buffer[i]===0xCA && buffer[i+1]===0xFE && buffer[i+2]===0xBA && buffer[i+3]===0xBE) {
+      magicIdx = i;
+      break;
+    }
+  }
+
+  if (magicIdx === -1) throw new Error("Magic Header not found in firmware template.");
+
+  let dataStart = magicIdx + 10; 
+  let currentOffset = 10;
+  
+  // SAFETY CHECK: 1024 Byte Limit
+  const totalSize = 10 + payloadData.c1.length + payloadData.c2.length + payloadData.c3.length;
+  if (totalSize > 1024) throw new Error("PAYLOAD TOO LARGE (" + totalSize + "/1024 BYTES)");
+
+  // Inject 1
+  buffer[magicIdx + 4] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 5] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c1) buffer[magicIdx + dataStart++] = b;
+  currentOffset += payloadData.c1.length;
+  
+  // Inject 2
+  buffer[magicIdx + 6] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 7] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c2) buffer[magicIdx + dataStart++] = b;
+  currentOffset += payloadData.c2.length;
+  
+  // Inject 3
+  buffer[magicIdx + 8] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 9] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c3) buffer[magicIdx + dataStart++] = b;
+  
+  return buffer;
+}
+
+document.getElementById('burnBtn').addEventListener('click', async () => {
+  const log = document.getElementById('log');
+  const hw = document.getElementById('hwModel').value;
+  
+  try {
+    if (!navigator.usb) throw new Error("WebUSB not supported. Use Chrome/Edge.");
+    
+    log.innerText = "COMPILING PAYLOADS...";
+    log.style.color = "#888";
+
+    const payloads = {
+      c1: compileDucky(document.getElementById('c1').value),
+      c2: compileDucky(document.getElementById('c2').value),
+      c3: compileDucky(document.getElementById('c3').value)
+    };
+    
+    log.innerText = "FETCHING FIRMWARE: " + hw + "...";
+    const resp = await fetch(hw);
+    if (!resp.ok) throw new Error("Failed to load firmware template.");
+    const hexText = await resp.text();
+    
+    log.innerText = "PATCHING BINARY...";
+    const firmBuffer = patchHex(hexText, payloads);
+    
+    log.innerText = "WAITING FOR DEVICE (PLUG IT IN NOW)...";
+    const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
+    
+    // Micronucleus instance
+    const client = new Micronucleus(device);
+    
+    log.innerText = "ERASING & UPLOADING...";
+    log.style.color = "#ff0"; // Yellow warning color
+    
+    await client.upload(firmBuffer);
+    
+    log.innerText = "/// SUCCESS. UNPLUG DEVICE. ///";
+    log.style.color = "#0f0";
+    
+  } catch (e) {
+    log.innerText = "ERROR: " + e.message;
+    log.style.color = "#f00";
+  }
+});
+</script>
+</body>
+</html>
