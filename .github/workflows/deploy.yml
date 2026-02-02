@@ -1,0 +1,52 @@
+name: Deploy Armory
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install Core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls http://digistump.com/package_digistump_index.json
+          arduino-cli core update-index
+          arduino-cli core install digistump:avr
+
+      - name: Compile SINGLE LED Template
+        run: |
+          mkdir -p public
+          # Ensure Dual Mode is 0
+          sed -i 's/#define DUAL_LED_MODE 1/#define DUAL_LED_MODE 0/' config.h
+          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/single .
+          cp ./build/single/*.hex ./public/roulette_single.hex
+
+      - name: Compile DUAL LED Template
+        run: |
+          # Ensure Dual Mode is 1
+          sed -i 's/#define DUAL_LED_MODE 0/#define DUAL_LED_MODE 1/' config.h
+          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/dual .
+          cp ./build/dual/*.hex ./public/roulette_dual.hex
+
+      - name: Copy Web Interface
+        run: cp index.html ./public/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
