@@ -1,10 +1,10 @@
 # BadUSB-Roulette
 
-The BadUSB is a revolver. 
-The barrel holds three bullets.
-Plug the BadUSB in to see which bullet is in the chamber.
-Unplug it to select the next bullet.
-Or leave it in to fire that bullet.
+The BadUSB is a revolver. <br>
+The barrel holds three bullets. <br>
+Plug the BadUSB in to see which bullet is in the chamber. <br>
+Unplug it to select the next bullet. <br>
+Or leave it in to fire that bullet. <br>
 
 Just like Russian Roulette, except you control the bullet.
 Which, I guess, makes it normal Roulette... the kind we all necessarily play when a revolver is involved.
