@@ -61,11 +61,18 @@ jobs:
           # Extract
           find ./build/dual -maxdepth 1 -name "*.hex" ! -name "*bootloader*" -exec cp {} ./dist/roulette_dual.hex \;
 
+      - name: Verify Ammo
+        run: |
+          if [ ! -f ./dist/roulette_single.hex ]; then echo "SINGLE HEX MISSING"; exit 1; fi
+          if [ ! -f ./dist/roulette_dual.hex ]; then echo "DUAL HEX MISSING"; exit 1; fi
+          # Force Jekyll bypass
+          touch ./dist/.nojekyll
+
       - name: Ship to Bunker
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          destination_dir: firmware  # CRITICAL: Isolate artifacts
+          destination_dir: firmware
           keep_files: true
           commit_message: "Reload: Factory Output -> /firmware"
