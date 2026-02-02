@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [DIAGNOSTIC]</title>
+  <title>BADUSB ROULETTE [SURGEON]</title>
   <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
   <style>
     :root {
@@ -334,8 +334,9 @@ function compileDucky(script) {
   return bytes;
 }
 
-// --- HEX PATCHER ---
+// --- HEX PATCHER (THE SURGEON) ---
 function patchHex(hexString, payloadData) {
+  // Convert HEX to Byte Buffer
   const buffer = new Uint8Array(8192).fill(0xFF); 
   const lines = hexString.split('\n');
   for (let line of lines) {
@@ -349,33 +350,47 @@ function patchHex(hexString, payloadData) {
     }
   }
 
+  // Find the Brain
   let magicIdx = -1;
   for (let i = 0; i < buffer.length - 4; i++) {
     if (buffer[i]===0xCA && buffer[i+1]===0xFE && buffer[i+2]===0xBA && buffer[i+3]===0xBE) {
       magicIdx = i; break;
     }
   }
+  
   if (magicIdx === -1) throw new Error("TEMPLATE INVALID: MAGIC HEADER NOT FOUND");
+  logMsg(`[SURGERY] Magic Header found at address: 0x${magicIdx.toString(16).toUpperCase()}`, 'debug');
 
   let currentOffset = 10;
-  function inject(payload, offH_idx, offL_idx) {
-    if (payload.length <= 1) { 
-      buffer[magicIdx + offH_idx] = 0x00;
-      buffer[magicIdx + offL_idx] = 0x00;
-      return; 
-    }
-    if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE");
-
+  
+  function inject(payload, label, offH_idx, offL_idx) {
+    // Write Offset Pointers (relative to magic header)
     buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
+    
+    if (payload.length <= 1) { 
+      logMsg(`[SURGERY] ${label}: Empty (Skipping injection)`, 'debug');
+      return; 
+    }
+    
+    if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE - BUFFER OVERFLOW");
+
+    logMsg(`[SURGERY] Injecting ${label}: ${payload.length} bytes at offset +${currentOffset}`, 'debug');
+    
+    // Write the actual bytes
     let writePtr = magicIdx + currentOffset;
-    for(let b of payload) buffer[writePtr++] = b;
+    for(let b of payload) {
+        buffer[writePtr++] = b;
+    }
+    
     currentOffset += payload.length;
   }
 
-  inject(payloadData.c1, 4, 5);
-  inject(payloadData.c2, 6, 7);
-  inject(payloadData.c3, 8, 9);
+  inject(payloadData.c1, "Chamber 1", 4, 5);
+  inject(payloadData.c2, "Chamber 2", 6, 7);
+  inject(payloadData.c3, "Chamber 3", 8, 9);
+  
+  logMsg(`[SURGERY] Total Payload Size: ${currentOffset} bytes`, 'debug');
   return buffer;
 }
 
@@ -407,7 +422,6 @@ document.getElementById('customHex').addEventListener('change', async (e) => {
   }
 });
 
-// UPDATED: Check last 30 runs and filter for "Factory"
 async function checkGitHubStatus(user, repo) {
   const url = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=30`;
   logMsg(`[API] GET ${url}`, 'debug');
@@ -420,7 +434,6 @@ async function checkGitHubStatus(user, repo) {
     const data = await resp.json();
     if (!data.workflow_runs) return { status: 'NO_RUNS' };
 
-    // FILTER HERE: Only care about the Factory
     const factoryRun = data.workflow_runs.find(run => run.name.includes("Factory"));
     
     if (factoryRun) {
@@ -496,13 +509,13 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
       c2: compileDucky(document.getElementById('c2').value),
       c3: compileDucky(document.getElementById('c3').value)
     };
-    logMsg("[CMP] Compilation Complete", 'success');
+    logMsg("[CMP] Compilation Complete. C1:" + payloads.c1.length + "b C2:" + payloads.c2.length + "b C3:" + payloads.c3.length + "b", 'success');
     
     const hexText = await acquireFirmware(hw);
     logMsg(`[HEX] Firmware loaded (${hexText.length} bytes)`, 'success');
     
     const firmBuffer = patchHex(hexText, payloads);
-    logMsg("[PAT] Firmware Patched", 'success');
+    logMsg("[PAT] Firmware Patched Successfully", 'success');
     
     logMsg("[USB] Requesting Device...", 'warn');
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
