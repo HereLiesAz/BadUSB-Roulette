@@ -1,0 +1,89 @@
+name: Deploy System (Unified)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths-ignore:
+      - 'firmware/**' # Stop infinite loops (Don't build just because firmware changed)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      # --- 1. SETUP ENVIRONMENT ---
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install Digispark Core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/digistump/arduino-boards-index/master/package_digistump_index.json
+          arduino-cli core update-index
+          arduino-cli core install digistump:avr
+
+      # --- 2. COMPILE FIRMWARE ---
+      - name: Compile Firmware
+        run: |
+          # Clean old inventory
+          mkdir -p firmware
+          rm -f firmware/*.hex
+          echo "Old firmware removed."
+
+          # A. SINGLE LED
+          mkdir -p build/single_env/Sketch
+          cp TheRevolver.ino build/single_env/Sketch/Sketch.ino
+          cp config.h build/single_env/Sketch/config.h
+          # Configure
+          sed -i 's/#define DUAL_LED_MODE 1/#define DUAL_LED_MODE 0/' build/single_env/Sketch/config.h
+          # Compile
+          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/single build/single_env/Sketch
+          # Move
+          find ./build/single -maxdepth 1 -name "*.hex" ! -name "*bootloader*" -exec cp {} ./firmware/roulette_single.hex \;
+
+          # B. DUAL LED
+          mkdir -p build/dual_env/Sketch
+          cp TheRevolver.ino build/dual_env/Sketch/Sketch.ino
+          cp config.h build/dual_env/Sketch/config.h
+          # Configure
+          sed -i 's/#define DUAL_LED_MODE 0/#define DUAL_LED_MODE 1/' build/dual_env/Sketch/config.h
+          # Compile
+          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/dual build/dual_env/Sketch
+          # Move
+          find ./build/dual -maxdepth 1 -name "*.hex" ! -name "*bootloader*" -exec cp {} ./firmware/roulette_dual.hex \;
+
+          echo "Firmware Inventory:"
+          ls -l firmware/
+
+      # --- 3. COMMIT BACK TO REPO ---
+      - name: Commit Artifacts
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add firmware/*.hex
+          # Only commit if changed
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Reload: Updated Firmware Artifacts [skip ci]" && git push)
+
+      # --- 4. DEPLOY SITE ---
+      - name: Stage Website
+        run: |
+          mkdir -p public
+          cp index.html public/index.html
+          # Copy the committed firmware folder to the deploy folder
+          cp -r firmware public/firmware
+          touch public/.nojekyll
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          commit_message: "Deploy: Unified Release"
