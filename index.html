@@ -224,7 +224,7 @@
           <option value="LINUX">LINUX</option>
         </select>
       </div>
-      <textarea id="c1" placeholder="// CHAMBER 1 PAYLOAD"></textarea>
+      <textarea id="c1" placeholder="// DUCKY OR // RAW 0x02, 0x00..."></textarea>
     </div>
     <div class="chamber">
       <div class="chamber-header">
@@ -236,7 +236,7 @@
           <option value="LINUX">LINUX</option>
         </select>
       </div>
-      <textarea id="c2" placeholder="// CHAMBER 2 PAYLOAD"></textarea>
+      <textarea id="c2" placeholder="// DUCKY OR // RAW 0x02, 0x00..."></textarea>
     </div>
     <div class="chamber">
       <div class="chamber-header">
@@ -248,7 +248,7 @@
           <option value="LINUX">LINUX</option>
         </select>
       </div>
-      <textarea id="c3" placeholder="// CHAMBER 3 PAYLOAD"></textarea>
+      <textarea id="c3" placeholder="// DUCKY OR // RAW 0x02, 0x00..."></textarea>
     </div>
   </div>
 
@@ -571,6 +571,22 @@ const MOD_BITMASKS = { 'CTRL': 0x01, 'SHIFT': 0x02, 'ALT': 0x04, 'GUI': 0x08, 'C
 
 function compileDucky(script) {
   const bytes = [];
+  
+  // 0. RAW BYTES DETECTION (Heuristic)
+  // If the script contains ONLY numbers, hex codes, commas, and whitespace (ignoring comments),
+  // we treat it as raw bytecode and bypass the compiler.
+  const rawCheck = script.replace(/\/\/.*$/gm, '').replace(/[\s,]/g, '');
+  if (rawCheck.length > 0 && /^(0x[0-9a-fA-F]+|\d+)+$/.test(rawCheck)) {
+     const rawTokens = script.replace(/\/\/.*$/gm, ' ').split(/[\s,]+/);
+     for (let token of rawTokens) {
+        if (!token) continue;
+        const num = parseInt(token);
+        if (!isNaN(num)) bytes.push(num);
+     }
+     return bytes;
+  }
+  
+  // --- NORMAL DUCKY COMPILER ---
   const lines = script.split('\n');
   let lastCmd = null;
   let defaultDelay = 0;
