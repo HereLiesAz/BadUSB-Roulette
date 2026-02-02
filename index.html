@@ -28,15 +28,12 @@
       overflow-x: hidden;
     }
 
-    /* --- SCANLINES & GLITCH FX --- */
+    /* --- SCANLINES --- */
     body::before {
       content: " ";
       display: block;
       position: fixed;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      right: 0;
+      top: 0; left: 0; bottom: 0; right: 0;
       background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
       z-index: 2;
       background-size: 100% 2px, 3px 100%;
@@ -67,46 +64,7 @@
       margin-top: 10px;
     }
 
-    /* --- THE MANUAL (COLLAPSIBLE) --- */
-    .manual-container {
-      width: 95%;
-      max-width: 1600px;
-      border: 1px solid var(--term-dim);
-      margin-bottom: 30px;
-      background: #000;
-    }
-
-    details {
-      padding: 10px;
-      cursor: pointer;
-    }
-
-    summary {
-      font-weight: bold;
-      letter-spacing: 2px;
-      list-style: none;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    summary::after { content: "[+]"; }
-    details[open] summary::after { content: "[-]"; }
-
-    .manual-content {
-      padding: 20px;
-      border-top: 1px dashed var(--term-dim);
-      color: #ccc;
-      line-height: 1.6;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px;
-    }
-    
-    .manual-column h3 { color: var(--term-green); border-bottom: 1px solid var(--term-dim); padding-bottom: 5px; }
-    .manual-column ul { list-style: square; padding-left: 20px; }
-
-    /* --- MAIN ARMORY --- */
+    /* --- ARMORY --- */
     .armory-controls {
       display: flex;
       gap: 20px;
@@ -148,22 +106,6 @@
       box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
     }
 
-    .chamber.dragover {
-      border-color: var(--bg-color);
-      background: var(--term-green);
-    }
-    .chamber.dragover * { pointer-events: none; opacity: 0; }
-    .chamber.dragover::after {
-      content: "DROP PAYLOAD HERE";
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      color: #000;
-      font-weight: bold;
-      font-size: 1.5rem;
-      opacity: 1;
-    }
-
     .chamber-header {
       background: #111;
       border-bottom: 1px solid #333;
@@ -174,15 +116,6 @@
       font-size: 0.9rem;
       letter-spacing: 2px;
     }
-
-    .load-btn {
-      cursor: pointer;
-      font-size: 0.7rem;
-      border: 1px solid #333;
-      padding: 2px 6px;
-      color: #666;
-    }
-    .load-btn:hover { color: var(--term-green); border-color: var(--term-green); }
 
     textarea {
       flex: 1;
@@ -198,18 +131,11 @@
       min-height: 400px;
     }
 
-    textarea:focus {
-      color: #fff;
-      background: #080808;
-    }
+    textarea:focus { color: #fff; background: #080808; }
 
-    /* --- TRIGGER MECHANISM --- */
-    .trigger-zone {
-      width: 100%;
-      text-align: center;
-      padding-bottom: 30px;
-    }
-
+    /* --- TRIGGER --- */
+    .trigger-zone { width: 100%; text-align: center; padding-bottom: 30px; }
+    
     button#burnBtn {
       background: #000;
       color: var(--term-green);
@@ -228,16 +154,14 @@
       box-shadow: 0 0 30px var(--term-green);
     }
 
-    /* --- SYSTEM CONSOLE --- */
+    /* --- CONSOLE --- */
     .console-wrapper {
       width: 95%;
       max-width: 1600px;
       background: #000;
       border: 1px solid var(--term-dim);
       margin-bottom: 50px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
-
     .console-header {
       background: var(--panel-bg);
       border-bottom: 1px solid var(--term-dim);
@@ -245,9 +169,7 @@
       font-size: 0.8rem;
       color: var(--term-dim);
       letter-spacing: 2px;
-      text-transform: uppercase;
     }
-
     #log {
       height: 200px;
       overflow-y: scroll;
@@ -255,56 +177,19 @@
       font-family: 'Consolas', monospace;
       font-size: 0.9rem;
       color: #888;
-      display: flex;
-      flex-direction: column;
     }
-
-    /* Scrollbar styling */
-    #log::-webkit-scrollbar { width: 8px; }
-    #log::-webkit-scrollbar-track { background: #000; }
-    #log::-webkit-scrollbar-thumb { background: #333; }
-    #log::-webkit-scrollbar-thumb:hover { background: var(--term-green); }
-
-    .log-line { margin-bottom: 2px; border-left: 2px solid transparent; padding-left: 5px; }
-    .log-err { color: var(--alert-red); border-left-color: var(--alert-red); }
-    .log-ok { color: var(--term-green); border-left-color: var(--term-green); }
-    .log-warn { color: #ff0; border-left-color: #ff0; }
+    .log-line { margin-bottom: 2px; }
+    .log-err { color: var(--alert-red); }
+    .log-ok { color: var(--term-green); }
+    .log-warn { color: #ff0; }
   </style>
 </head>
 <body>
 
   <header>
     <h1>BadUSB Roulette</h1>
-    <h2>For the Digispark ATTINY85</h2>
     <div class="subtitle">/// UNIFIED PAYLOAD FABRICATION SYSTEM ///</div>
   </header>
-
-  <div class="manual-container">
-    <details>
-      <summary>/// FIELD MANUAL (READ BEFORE FIRING)</summary>
-      <div class="manual-content">
-        <div class="manual-column">
-          <h3>THE MECHANISM</h3>
-          <p>The BadUSB is a revolver. The barrel holds three bullets. Just like Russian Roulette, except you control the bullet.</p>
-          <ul>
-            <li><strong>PLUG IN:</strong> Device fires the current chamber.</li>
-            <li><strong>UNPLUG:</strong> Device cycles to the next chamber.</li>
-            <li><strong>LED FLASH:</strong> Indicates chamber number (1, 2, or 3 blinks).</li>
-            <li><strong>SOLID LIGHT:</strong> Armed. You have 3 seconds to unplug before it fires.</li>
-          </ul>
-        </div>
-        <div class="manual-column">
-          <h3>OPERATIONAL PROTOCOL</h3>
-          <ul>
-            <li><strong>LOAD:</strong> Drag .txt or .ino files into the chambers.</li>
-            <li><strong>SKIP LOGIC:</strong> Empty chambers are automatically skipped during cycling.</li>
-            <li><strong>COMPILE:</strong> Click the [FLASH FIRMWARE] button.</li>
-            <li><strong>LIMITS:</strong> Total payload size must not exceed 1024 bytes.</li>
-          </ul>
-        </div>
-      </div>
-    </details>
-  </div>
 
   <div class="armory-controls">
     <label>HARDWARE CONFIGURATION:</label>
@@ -315,31 +200,17 @@
   </div>
 
   <div class="chamber-grid">
-    <div class="chamber" id="box1">
-      <div class="chamber-header">
-        <span>CHAMBER 01</span>
-        <span class="load-btn" onclick="triggerFile('file1')">[LOAD FILE]</span>
-        <input type="file" id="file1" hidden onchange="loadFile(this, 'c1')">
-      </div>
-      <textarea id="c1" placeholder="// EXAMPLE: WINDOWS PAYLOAD&#10;&#10;DELAY 1000&#10;GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER"></textarea>
+    <div class="chamber">
+      <div class="chamber-header">CHAMBER 01</div>
+      <textarea id="c1" placeholder="// WINDOWS PAYLOAD&#10;DELAY 1000&#10;GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER"></textarea>
     </div>
-
-    <div class="chamber" id="box2">
-      <div class="chamber-header">
-        <span>CHAMBER 02</span>
-        <span class="load-btn" onclick="triggerFile('file2')">[LOAD FILE]</span>
-        <input type="file" id="file2" hidden onchange="loadFile(this, 'c2')">
-      </div>
-      <textarea id="c2" placeholder="// EXAMPLE: MAC PAYLOAD&#10;&#10;DELAY 1000&#10;GUI SPACE&#10;DELAY 200&#10;STRING Terminal&#10;ENTER"></textarea>
+    <div class="chamber">
+      <div class="chamber-header">CHAMBER 02</div>
+      <textarea id="c2" placeholder="// MAC PAYLOAD&#10;DELAY 1000&#10;GUI SPACE&#10;DELAY 200&#10;STRING Terminal&#10;ENTER"></textarea>
     </div>
-
-    <div class="chamber" id="box3">
-      <div class="chamber-header">
-        <span>CHAMBER 03</span>
-        <span class="load-btn" onclick="triggerFile('file3')">[LOAD FILE]</span>
-        <input type="file" id="file3" hidden onchange="loadFile(this, 'c3')">
-      </div>
-      <textarea id="c3" placeholder="// EXAMPLE: LINUX PAYLOAD&#10;&#10;DELAY 1000&#10;GUI&#10;DELAY 200&#10;STRING firefox&#10;ENTER"></textarea>
+    <div class="chamber">
+      <div class="chamber-header">CHAMBER 03</div>
+      <textarea id="c3" placeholder="// LINUX PAYLOAD&#10;DELAY 1000&#10;GUI&#10;DELAY 200&#10;STRING firefox&#10;ENTER"></textarea>
     </div>
   </div>
 
@@ -349,64 +220,19 @@
 
   <div class="console-wrapper">
     <div class="console-header">/// SYSTEM OUTPUT ///</div>
-    <div id="log">
-      <div class="log-line">[SYSTEM] READY. AWAITING PAYLOADS...</div>
-    </div>
+    <div id="log"></div>
   </div>
 
 <script>
-// --- LOGGING ENGINE ---
 function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
   const line = document.createElement('div');
-  
-  let cssClass = 'log-line';
-  if(type === 'error') cssClass += ' log-err';
-  if(type === 'success') cssClass += ' log-ok';
-  if(type === 'warn') cssClass += ' log-warn';
-  
-  line.className = cssClass;
-  const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-  line.innerText = `[${time}] ${msg}`;
-  
+  line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : '');
+  line.innerText = `[${new Date().toLocaleTimeString('en-US',{hour12:false})}] ${msg}`;
   logEl.appendChild(line);
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-// --- DRAG & DROP LOGIC ---
-['box1', 'box2', 'box3'].forEach((id) => {
-  const el = document.getElementById(id);
-  const textarea = el.querySelector('textarea');
-  
-  el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('dragover'); });
-  el.addEventListener('dragleave', (e) => { e.preventDefault(); el.classList.remove('dragover'); });
-  el.addEventListener('drop', (e) => {
-    e.preventDefault();
-    el.classList.remove('dragover');
-    if (e.dataTransfer.files[0]) {
-      logMsg("FILE DETECTED. LOADING...", 'warn');
-      readFileInto(e.dataTransfer.files[0], textarea);
-    }
-  });
-});
-
-function triggerFile(id) { document.getElementById(id).click(); }
-function loadFile(input, id) { 
-  if(input.files[0]) {
-    logMsg("FILE SELECTED. LOADING...", 'warn');
-    readFileInto(input.files[0], document.getElementById(id)); 
-  }
-}
-function readFileInto(file, textarea) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    textarea.value = e.target.result;
-    logMsg("FILE LOADED SUCCESSFULLY.");
-  };
-  reader.readAsText(file);
-}
-
-// --- COMPILER ENGINE ---
 const KEY_MAP = {
   'ENTER':0x28, 'ESC':0x29, 'BACKSPACE':0x2A, 'TAB':0x2B, 'SPACE':0x2C, 'MINUS':0x2D, 
   'EQUAL':0x2E, 'LEFT_BRACE':0x2F, 'RIGHT_BRACE':0x30, 'BACKSLASH':0x31, 'SEMICOLON':0x33, 
@@ -441,22 +267,27 @@ function compileDucky(script) {
       bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
     } 
     else if (cmd === 'STRING') {
-      bytes.push(0x02, args.length);
-      for (let i = 0; i < args.length; i++) bytes.push(args.charCodeAt(i));
+      // Chunking for strings > 255 chars
+      for (let i = 0; i < args.length; i += 255) {
+        const chunk = args.substring(i, Math.min(i + 255, args.length));
+        bytes.push(0x03, chunk.length); // 0x03 is OP_PRINT
+        for (let c = 0; c < chunk.length; c++) bytes.push(chunk.charCodeAt(c));
+      }
     }
     else if (cmd === 'GUI' || cmd === 'WINDOWS') {
       let key = 0;
       if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
       else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
-      bytes.push(0x02, 0x08, key); 
+      bytes.push(0x02, 0x08, key); // OP_KEY (2) + MOD_GUI (8) + Key
     }
-    else if (KEY_MAP[cmd]) { bytes.push(0x02, 0x00, KEY_MAP[cmd]); }
+    else if (KEY_MAP[cmd]) { 
+      bytes.push(0x02, 0x00, KEY_MAP[cmd]); 
+    }
   }
-  bytes.push(0x00); 
+  bytes.push(0x00); // OP_END
   return bytes;
 }
 
-// --- PATCHER & FLASHER ---
 function patchHex(hexString, payloadData) {
   const buffer = new Uint8Array(8192).fill(0xFF); 
   const lines = hexString.split('\n');
@@ -478,30 +309,24 @@ function patchHex(hexString, payloadData) {
     }
   }
 
-  if (magicIdx === -1) throw new Error("TEMPLATE CORRUPTED: MAGIC HEADER MISSING");
+  if (magicIdx === -1) throw new Error("TEMPLATE INVALID: MAGIC HEADER NOT FOUND");
 
+  // Header is 10 bytes: MAGIC (4) + 3 * OFFSETS (2)
   let dataStart = magicIdx + 10; 
   let currentOffset = 10;
   
-  const totalSize = 10 + payloadData.c1.length + payloadData.c2.length + payloadData.c3.length;
-  if (totalSize > 1024) throw new Error("PAYLOAD OVERFLOW: " + totalSize + "/1024 BYTES");
-
-  // Helper: Write payload or skip if empty
   function inject(payload, offH_idx, offL_idx) {
-    // If payload is basically empty (just OP_END 0x00) and no real commands, 
-    // treat as NULL. 
-    // compileDucky returns [0x00] for empty string.
-    if (payload.length <= 1 && payload[0] === 0x00) {
+    if (payload.length <= 1) { // Only OP_END
       buffer[magicIdx + offH_idx] = 0x00;
       buffer[magicIdx + offL_idx] = 0x00;
       return; 
     }
     
-    // Write Offset
+    if (dataStart + payload.length > 8192) throw new Error("PAYLOAD TOO LARGE");
+
     buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     
-    // Write Data
     for(let b of payload) buffer[magicIdx + dataStart++] = b;
     currentOffset += payload.length;
   }
@@ -515,38 +340,33 @@ function patchHex(hexString, payloadData) {
 
 document.getElementById('burnBtn').addEventListener('click', async () => {
   const hw = document.getElementById('hwModel').value;
-  
   try {
-    if (!navigator.usb) throw new Error("WEBUSB NOT DETECTED. USE CHROME/EDGE.");
+    if (!navigator.usb) throw new Error("WEBUSB NOT SUPPORTED (USE CHROME/EDGE)");
     
-    logMsg("COMPILING DUCKYSCRIPTS...");
-    
+    logMsg("COMPILING...");
     const payloads = {
       c1: compileDucky(document.getElementById('c1').value),
       c2: compileDucky(document.getElementById('c2').value),
       c3: compileDucky(document.getElementById('c3').value)
     };
     
-    logMsg("FETCHING FIRMWARE TEMPLATE: " + hw);
+    logMsg("FETCHING TEMPLATE: " + hw);
     const resp = await fetch(hw);
-    if (!resp.ok) throw new Error("TEMPLATE MISSING: " + hw);
+    if (!resp.ok) throw new Error("TEMPLATE MISSING");
     const hexText = await resp.text();
     
-    logMsg("PATCHING HEX BINARY...");
     const firmBuffer = patchHex(hexText, payloads);
     
-    logMsg("SEARCHING FOR DIGISPARK... (PLUG IT IN NOW)");
+    logMsg("SEARCHING FOR DIGISPARK... (PLUG IN NOW)");
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
     
     const client = new Micronucleus(device);
-    
-    logMsg("DEVICE FOUND. FLASHING FIRMWARE...", 'warn');
+    logMsg("FLASHING...", 'warn');
     await client.upload(firmBuffer);
-    
-    logMsg("FLASH COMPLETE. DISENGAGE DEVICE.", 'success');
+    logMsg("COMPLETE. DISCONNECT.", 'success');
     
   } catch (e) {
-    logMsg("FATAL ERROR: " + e.message, 'error');
+    logMsg("ERROR: " + e.message, 'error');
   }
 });
 </script>
