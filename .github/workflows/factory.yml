@@ -1,0 +1,122 @@
+name: The Factory
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - '*.ino'
+      - 'scripts/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Run Weaponizer (Convert & Combine)
+        # FIXED: Path correction (scripts/weaponizer.py)
+        run: python3 scripts/weaponizer.py
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install Core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls http://digistump.com/package_digistump_index.json
+          arduino-cli core update-index
+          arduino-cli core install digistump:avr
+
+      - name: Compile SINGLE LED Version
+        run: |
+          mkdir -p build
+          # Config is already 0 by default, but let's enforce it
+          sed -i 's/#define DUAL_LED_MODE 1/#define DUAL_LED_MODE 0/' config.h
+          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/single .
+          mv ./build/single/*.hex ./build/roulette_single.hex
+
+      - name: Compile DUAL LED Version
+        run: |
+          # Edit config.h to enable Dual Mode
+          sed -i 's/#define DUAL_LED_MODE 0/#define DUAL_LED_MODE 1/' config.h
+          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/dual .
+          mv ./build/dual/*.hex ./build/roulette_dual.hex
+
+      - name: Deploy Web Flasher
+        run: |
+          mkdir -p public
+          cp ./build/*.hex ./public/
+          
+          # CREATE THE HTML INTERFACE
+          cat <<EOF > public/index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>ROULETTE ARMORY</title>
+            <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
+            <style>
+              body { background: #111; color: #0f0; font-family: monospace; text-align: center; margin-top: 50px; }
+              .btn { 
+                display: block; width: 300px; margin: 20px auto; padding: 20px; 
+                border: 2px solid #0f0; background: #000; color: #0f0; 
+                cursor: pointer; font-size: 18px; 
+              }
+              .btn:hover { background: #0f0; color: #000; }
+              #log { margin-top: 20px; color: #fff; }
+            </style>
+          </head>
+          <body>
+            <h1>/// SELECT HARDWARE ///</h1>
+            
+            <button class="btn" onclick="flash('roulette_single.hex')">
+              SINGLE LED (Standard)
+            </button>
+            
+            <button class="btn" onclick="flash('roulette_dual.hex')" style="border-color: #f00; color: #f00;">
+              DUAL LED (Red/Green)
+            </button>
+
+            <div id="log">Status: WAITING FOR SELECTION</div>
+
+            <script>
+              async function flash(filename) {
+                const log = document.getElementById('log');
+                try {
+                  if (!navigator.usb) throw new Error("WebUSB not supported (Use Chrome)");
+                  
+                  log.innerText = "DOWNLOADING " + filename + "...";
+                  const resp = await fetch(filename);
+                  if (!resp.ok) throw new Error("Firmware missing");
+                  const data = await resp.arrayBuffer();
+
+                  log.innerText = "CONNECT DEVICE NOW...";
+                  const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
+                  
+                  log.innerText = "FLASHING...";
+                  const client = new Micronucleus(device);
+                  await client.upload(new Uint8Array(data));
+                  
+                  log.innerText = "COMPLETE. UNPLUG.";
+                  log.style.color = "#0f0";
+                } catch (e) {
+                  log.innerText = "ERROR: " + e.message;
+                  log.style.color = "#fff";
+                }
+              }
+            </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
