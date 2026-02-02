@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [OPTIMIZED]</title>
+  <title>BADUSB ROULETTE [SAFETY LOCK]</title>
   
   <script src="firmware/micronucleus.js"></script>
 
@@ -433,59 +433,6 @@ function patchHex(hexString, payloadData) {
   logMsg(`[SURGERY] Final Image Size: ${alignedSize} bytes (Safety Trim)`, 'success');
   
   return fullBuffer.slice(0, alignedSize);
-}
-
-function mutate(selector, targetId) {
-  const mode = selector.value;
-  const area = document.getElementById(targetId);
-  let script = area.value;
-  if (!script) return;
-  script = script
-    .replace(/GUI r\b/gi, '###RUN###').replace(/GUI SPACE\b/gi, '###RUN###').replace(/ALT F2\b/gi, '###RUN###')
-    .replace(/COMMAND\b/gi, '###GUI###').replace(/WINDOWS\b/gi, '###GUI###').replace(/GUI\b/gi, '###GUI###');
-  switch(mode) {
-    case 'WIN': script = script.replace(/###RUN###/g, 'GUI r').replace(/###GUI###/g, 'GUI').replace(/OPTION\b/gi, 'ALT'); break;
-    case 'MAC': script = script.replace(/###RUN###/g, 'GUI SPACE').replace(/###GUI###/g, 'COMMAND').replace(/ALT\b/gi, 'OPTION').replace(/CTRL\b/gi, 'COMMAND'); break;
-    case 'LINUX': script = script.replace(/###RUN###/g, 'ALT F2').replace(/###GUI###/g, 'GUI').replace(/COMMAND\b/gi, 'CTRL').replace(/OPTION\b/gi, 'ALT'); break;
-  }
-  area.value = script;
-  selector.selectedIndex = 0; 
-}
-
-// --- APP LOGIC ---
-let customHexData = null;
-document.getElementById('customHex').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    customHexData = await file.text();
-    logMsg(`FILE LOADED: ${file.name} (${file.size} bytes)`, 'success');
-  }
-});
-
-async function acquireFirmware(filename) {
-  if (customHexData) return customHexData;
-
-  const firmPath = `firmware/${filename}`;
-  const targetUrl = `${firmPath}?t=${Date.now()}`;
-  
-  const fullPath = new URL(firmPath, document.baseURI).href;
-  logMsg(`[SYS] Current Page: ${document.baseURI}`, 'debug');
-  logMsg(`[ACQ] Fetching: ${fullPath}`, 'debug');
-
-  try {
-    const resp = await fetch(targetUrl);
-    if (resp.status === 404) {
-      logMsg(`[ERR] 404 Not Found.`, 'error');
-      logMsg(`[HINT] 1. Did the 'Deploy System' action finish?`, 'warn');
-      logMsg(`[HINT] 2. Did the build fail? Check Actions tab.`, 'warn');
-      throw new Error("Firmware file missing from deployment.");
-    }
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    logMsg(`[ACQ] Success.`, 'success');
-    return await resp.text();
-  } catch (e) {
-    throw new Error(`Download Failed: ${e.message}`);
-  }
 }
 
 document.getElementById('burnBtn').addEventListener('click', async () => {
