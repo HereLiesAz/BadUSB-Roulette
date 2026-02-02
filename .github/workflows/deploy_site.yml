@@ -22,6 +22,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
-          exclude_assets: '**.ino,**.h,**.yml,README.md'
-          keep_files: true # CRITICAL: Don't delete firmware
+          exclude_assets: '**.ino,**.h,**.yml,README.md,dist,build'
+          keep_files: true # CRITICAL: Do not delete the firmware folder
           commit_message: "Update: Web Interface"
