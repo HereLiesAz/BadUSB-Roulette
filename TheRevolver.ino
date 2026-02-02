@@ -1,10 +1,6 @@
 /*
-   PROJECT: BadUSB Revolver (Smart-Cycle Edition)
+   PROJECT: BadUSB Revolver (Web-Flasher Edition)
    HARDWARE: ATtiny85 (Digispark)
-   
-   Updates:
-   - Skips empty chambers automatically.
-   - fast-forwards to valid payload if EEPROM is stale.
  */
 
 #include <avr/eeprom.h>
@@ -21,9 +17,15 @@
 #define OP_PRINTLN  0x04
 
 // RESERVE 1KB FOR PAYLOADS
+// Header Structure (10 Bytes):
+// [0-3] MAGIC (CAFEBABE)
+// [4-5] Chamber 1 Offset
+// [6-7] Chamber 2 Offset
+// [8-9] Chamber 3 Offset
 const uint8_t PAYLOAD_STORAGE[1024] PROGMEM = {
   0xCA, 0xFE, 0xBA, 0xBE, 
-  0x00, 0x00, 0x00, 0x00  // Padding/Offsets (Managed by JS)
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00 
 };
 
 // ==========================================
@@ -34,7 +36,12 @@ const uint8_t PAYLOAD_STORAGE[1024] PROGMEM = {
 bool has_payload(byte chamber) {
   if (chamber >= TOTAL_CHAMBERS) return false;
   
+  // Calculate offset location in the header
+  // Chamber 0 -> Index 4
+  // Chamber 1 -> Index 6
+  // Chamber 2 -> Index 8
   uint16_t offset_loc = 4 + (chamber * 2);
+  
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
   uint16_t ptr = (off_h << 8) | off_l;
@@ -59,8 +66,7 @@ void setup() {
   if (mode >= TOTAL_CHAMBERS) mode = 0;
 
   // A. Stale Memory Check
-  // If we just flashed the device and the old EEPROM points to an empty chamber,
-  // we must fast-forward to the first valid one immediately.
+  // If the current mode points to an empty chamber, scan forward immediately.
   for (int i = 0; i < TOTAL_CHAMBERS; i++) {
     if (has_payload(mode)) break;
     mode = (mode + 1) % TOTAL_CHAMBERS;
@@ -68,14 +74,13 @@ void setup() {
 
   // FAILSAFE: If ALL chambers are empty, die here.
   if (!has_payload(mode)) {
-    // Rapid Error Flash
     while(1) {
       signal_arm(); DigiKeyboard.delay(100);
       signal_fire(); DigiKeyboard.delay(100);
     }
   }
 
-  // B. Calculate NEXT Step (Skip empty chambers)
+  // B. Calculate NEXT Step (Skip empty chambers for next boot)
   byte next = (mode + 1) % TOTAL_CHAMBERS;
   for (int i = 0; i < TOTAL_CHAMBERS; i++) {
     if (has_payload(next)) break;
@@ -99,14 +104,14 @@ void setup() {
   DigiKeyboard.delay(SAFE_WINDOW);
 
   // 5. FIRE PHASE
-  signal_fire(); 
+  signal_fire();
   
   // EXECUTE PAYLOAD
   uint16_t offset_loc = 4 + (mode * 2);
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
   uint16_t payload_addr = (off_h << 8) | off_l;
-
+  
   if (payload_addr > 0 && payload_addr < 1024) {
      run_vm(payload_addr);
   }
@@ -124,7 +129,7 @@ void loop() {}
 void run_vm(uint16_t ptr) {
   while(true) {
     uint8_t opcode = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-    
+
     if (opcode == OP_END) break;
     
     else if (opcode == OP_DELAY) {
