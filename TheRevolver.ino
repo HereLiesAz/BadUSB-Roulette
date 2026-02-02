@@ -1,10 +1,10 @@
 /*
-   PROJECT: BadUSB Revolver (Interpreter Edition)
+   PROJECT: BadUSB Revolver (Smart-Cycle Edition)
    HARDWARE: ATtiny85 (Digispark)
    
-   This version does not contain hardcoded payloads.
-   It contains a Bytecode Interpreter and a reserved memory block.
-   The Web Interface injects data into this block.
+   Updates:
+   - Skips empty chambers automatically.
+   - fast-forwards to valid payload if EEPROM is stale.
  */
 
 #include <avr/eeprom.h>
@@ -15,13 +15,12 @@
 //      VIRTUAL MACHINE DEFINITIONS
 // ==========================================
 #define OP_END      0x00
-#define OP_DELAY    0x01 // [OP] [TIME_MS_H] [TIME_MS_L]
-#define OP_KEY      0x02 // [OP] [MOD] [KEY]
-#define OP_PRINT    0x03 // [OP] [LEN] [CHAR1] [CHAR2]...
-#define OP_PRINTLN  0x04 // [OP] [LEN] [CHAR1]... (Adds Enter)
+#define OP_DELAY    0x01
+#define OP_KEY      0x02
+#define OP_PRINT    0x03
+#define OP_PRINTLN  0x04
 
-// RESERVE 1KB FOR PAYLOADS (Magic Header: CAFE BABE)
-// Reduced from 2KB to fit within ATtiny85 flash limits (6012 bytes max)
+// RESERVE 1KB FOR PAYLOADS
 const uint8_t PAYLOAD_STORAGE[1024] PROGMEM = {
   0xCA, 0xFE, 0xBA, 0xBE, 
   0x00, 0x00, 0x00, 0x00  // Padding/Offsets (Managed by JS)
@@ -30,6 +29,18 @@ const uint8_t PAYLOAD_STORAGE[1024] PROGMEM = {
 // ==========================================
 //      LOGIC ENGINE
 // ==========================================
+
+// Helper: Check if a chamber has valid data (Offset != 0)
+bool has_payload(byte chamber) {
+  if (chamber >= TOTAL_CHAMBERS) return false;
+  
+  uint16_t offset_loc = 4 + (chamber * 2);
+  uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
+  uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
+  uint16_t ptr = (off_h << 8) | off_l;
+  
+  return (ptr != 0);
+}
 
 void setup() {
   // 1. PIN SETUP
@@ -43,17 +54,41 @@ void setup() {
     digitalWrite(PIN_SINGLE, LOW);
   #endif
 
-  // 2. ROTATION LOGIC (Entropy)
-  // Read -> Calculate Next -> Write Immediately
+  // 2. SMART ROTATION LOGIC
   byte mode = eeprom_read_byte((const uint8_t*)0);
   if (mode >= TOTAL_CHAMBERS) mode = 0;
+
+  // A. Stale Memory Check
+  // If we just flashed the device and the old EEPROM points to an empty chamber,
+  // we must fast-forward to the first valid one immediately.
+  for (int i = 0; i < TOTAL_CHAMBERS; i++) {
+    if (has_payload(mode)) break;
+    mode = (mode + 1) % TOTAL_CHAMBERS;
+  }
+
+  // FAILSAFE: If ALL chambers are empty, die here.
+  if (!has_payload(mode)) {
+    // Rapid Error Flash
+    while(1) {
+      signal_arm(); DigiKeyboard.delay(100);
+      signal_fire(); DigiKeyboard.delay(100);
+    }
+  }
+
+  // B. Calculate NEXT Step (Skip empty chambers)
+  byte next = (mode + 1) % TOTAL_CHAMBERS;
+  for (int i = 0; i < TOTAL_CHAMBERS; i++) {
+    if (has_payload(next)) break;
+    next = (next + 1) % TOTAL_CHAMBERS;
+  }
   
-  byte nextMode = (mode + 1) % TOTAL_CHAMBERS;
-  eeprom_update_byte((uint8_t*)0, nextMode);
+  // Write the future immediately
+  eeprom_update_byte((uint8_t*)0, next);
 
   // 3. IDENTIFICATION PHASE
   DigiKeyboard.delay(1000); 
 
+  // Flash the count (1-based index for humans)
   for (int i = 0; i <= mode; i++) {
     signal_flash();
     DigiKeyboard.delay(300);
@@ -67,17 +102,11 @@ void setup() {
   signal_fire(); 
   
   // EXECUTE PAYLOAD
-  // The JS compiler generates a specific offset for each chamber.
-  // We assume the header structure is:
-  // [CA FE BA BE] [OFFSET_1_H] [OFFSET_1_L] [OFFSET_2_H] [OFFSET_2_L] [OFFSET_3_H] [OFFSET_3_L]
-  
   uint16_t offset_loc = 4 + (mode * 2);
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
   uint16_t payload_addr = (off_h << 8) | off_l;
 
-  // Safety check: If offset is 0 or out of bounds (still FF), do nothing.
-  // UPDATED LIMIT: 1024
   if (payload_addr > 0 && payload_addr < 1024) {
      run_vm(payload_addr);
   }
@@ -96,9 +125,7 @@ void run_vm(uint16_t ptr) {
   while(true) {
     uint8_t opcode = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
     
-    if (opcode == OP_END) {
-      break; 
-    }
+    if (opcode == OP_END) break;
     
     else if (opcode == OP_DELAY) {
       uint8_t h = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
@@ -122,8 +149,6 @@ void run_vm(uint16_t ptr) {
       if (opcode == OP_PRINTLN) DigiKeyboard.print("\n");
     }
     
-    // Safety break for runaways
-    // UPDATED LIMIT: 1024
     if (ptr >= 1024) break;
   }
 }
