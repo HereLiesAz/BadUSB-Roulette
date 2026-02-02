@@ -7,7 +7,7 @@
    The Web Interface injects data into this block.
  */
 
-#include <avr/eeprom.h> // FIXED: Switched to native AVR library
+#include <avr/eeprom.h>
 #include "DigiKeyboard.h"
 #include "config.h"
 
@@ -20,9 +20,9 @@
 #define OP_PRINT    0x03 // [OP] [LEN] [CHAR1] [CHAR2]...
 #define OP_PRINTLN  0x04 // [OP] [LEN] [CHAR1]... (Adds Enter)
 
-// RESERVE 2KB FOR PAYLOADS (Magic Header: CAFE BABE)
-// The web flasher looks for this pattern to know where to write.
-const uint8_t PAYLOAD_STORAGE[2048] PROGMEM = {
+// RESERVE 1KB FOR PAYLOADS (Magic Header: CAFE BABE)
+// Reduced from 2KB to fit within ATtiny85 flash limits (6012 bytes max)
+const uint8_t PAYLOAD_STORAGE[1024] PROGMEM = {
   0xCA, 0xFE, 0xBA, 0xBE, 
   0x00, 0x00, 0x00, 0x00  // Padding/Offsets (Managed by JS)
 };
@@ -45,7 +45,6 @@ void setup() {
 
   // 2. ROTATION LOGIC (Entropy)
   // Read -> Calculate Next -> Write Immediately
-  // FIXED: Using native AVR EEPROM functions
   byte mode = eeprom_read_byte((const uint8_t*)0);
   if (mode >= TOTAL_CHAMBERS) mode = 0;
   
@@ -78,7 +77,8 @@ void setup() {
   uint16_t payload_addr = (off_h << 8) | off_l;
 
   // Safety check: If offset is 0 or out of bounds (still FF), do nothing.
-  if (payload_addr > 0 && payload_addr < 2048) {
+  // UPDATED LIMIT: 1024
+  if (payload_addr > 0 && payload_addr < 1024) {
      run_vm(payload_addr);
   }
 
@@ -123,7 +123,8 @@ void run_vm(uint16_t ptr) {
     }
     
     // Safety break for runaways
-    if (ptr >= 2048) break;
+    // UPDATED LIMIT: 1024
+    if (ptr >= 1024) break;
   }
 }
 
