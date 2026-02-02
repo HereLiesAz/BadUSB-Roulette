@@ -302,11 +302,18 @@ function compileDucky(script) {
   const bytes = [];
   const lines = script.split('\n');
   let lastCmd = null;
+  let defaultDelay = 0;
 
   for (let line of lines) {
     line = line.trim();
     if (!line || line.startsWith("REM") || line.startsWith("//")) continue;
     
+    // Inject Default Delay if set (before each command except DELAY/DEFAULT_DELAY)
+    const isControl = line.startsWith("DELAY") || line.startsWith("DEFAULT_DELAY") || line.startsWith("DEFAULTDELAY");
+    if (defaultDelay > 0 && !isControl) {
+        bytes.push(0x01, (defaultDelay >> 8) & 0xFF, defaultDelay & 0xFF);
+    }
+
     const parts = line.split(' ');
     const cmd = parts[0].toUpperCase();
     const args = parts.slice(1).join(' ');
@@ -327,8 +334,15 @@ function compileDucky(script) {
     else if (cmd === 'DELAY') {
       const ms = parseInt(args);
       currentCmdBytes = [0x01, (ms >> 8) & 0xFF, ms & 0xFF];
-    } 
-    // 3. STRING
+    }
+    
+    // 3. DEFAULT_DELAY
+    else if (cmd === 'DEFAULT_DELAY' || cmd === 'DEFAULTDELAY') {
+        defaultDelay = parseInt(args);
+        continue;
+    }
+
+    // 4. STRING
     else if (cmd === 'STRING') {
       for (let i = 0; i < args.length; i += 255) {
         const chunk = args.substring(i, Math.min(i + 255, args.length));
@@ -336,16 +350,16 @@ function compileDucky(script) {
         for (let c = 0; c < chunk.length; c++) currentCmdBytes.push(chunk.charCodeAt(c));
       }
     } 
-    // 4. MODIFIER + KEY
+    // 5. MODIFIER + KEY
     else if (MOD_BITMASKS[cmd] && parts.length > 1) {
       const keyStr = parts[1].toUpperCase();
       let keyByte = 0;
-      if (keyStr.length === 1) keyByte = getAsciiKey(keyStr); // Helper needed for basic chars
-      else if (KEY_MAP[keyStr]) keyByte = KEY_MAP[keyStr];
+      if (keyStr.length === 1) keyByte = getAsciiKey(keyStr); 
+      if (keyByte === 0 && KEY_MAP[keyStr]) keyByte = KEY_MAP[keyStr]; // Fallback for special chars
       
       if (keyByte > 0) currentCmdBytes = [0x02, MOD_BITMASKS[cmd], keyByte];
     }
-    // 5. SINGLE KEY
+    // 6. SINGLE KEY
     else if (KEY_MAP[cmd]) { 
       currentCmdBytes = [0x02, 0x00, KEY_MAP[cmd]]; 
     }
@@ -396,19 +410,22 @@ function patchHex(hexString, payloadData) {
       magicIdx = i; break;
     }
   }
-  if (magicIdx === -1) throw new Error("FIRMWARE CORRUPTED: Magic Header Missing");
+  if (magicIdx === -1) throw new Error("CRITICAL: Hex Header 'CAFEBABE' Missing. Firmware Incompatible.");
 
   let currentOffset = 10;
   function inject(payload, offH_idx, offL_idx) {
-    // FIX: If payload is just [0x00] (Empty), DO NOT point to it. 
-    // Point to 0x0000 so the firmware ignores the chamber.
+    // If payload is empty (just OP_END), point to 0 to skip
     if (payload.length <= 1) {
         fullBuffer[magicIdx + offH_idx] = 0x00;
         fullBuffer[magicIdx + offL_idx] = 0x00;
         return;
     }
 
-    // Write Offset
+    // Write Offset (Relative to MagicIdx, but handled by VM as relative to Storage Start)
+    // The VM uses indices into the PAYLOAD_STORAGE array.
+    // 0 = CA, 1 = FE, etc.
+    // Payload starts at index 10.
+    
     fullBuffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     fullBuffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     
@@ -456,7 +473,7 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
     logMsg("/// DONE ///", 'success');
     
   } catch (e) {
-    if (e.message.includes("Access denied")) document.getElementById('linuxWarning').style.display = 'block';
+    if (e.message.includes("Access denied") || e.message.includes("denied")) document.getElementById('linuxWarning').style.display = 'block';
     logMsg(e.message, 'error');
   }
 });
