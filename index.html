@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Roulette Armory</title>
+  <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
+  <style>
+    body { background: #111; color: #0f0; font-family: 'Courier New', monospace; text-align: center; padding: 20px; }
+    textarea { width: 30%; height: 300px; background: #000; color: #0f0; border: 1px solid #333; margin: 5px; font-family: inherit; }
+    .chamber-container { display: flex; justify-content: center; gap: 10px; }
+    h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+    button { background: #000; color: #fff; border: 1px solid #fff; padding: 15px 30px; font-size: 18px; cursor: pointer; margin-top: 20px; }
+    button:hover { background: #fff; color: #000; }
+    #log { margin-top: 20px; color: #888; white-space: pre-wrap; }
+    select { background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px; font-size: 16px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h1>/// ROULETTE ARMORY ///</h1>
+  
+  <label>HARDWARE MODEL: </label>
+  <select id="hwModel">
+    <option value="roulette_single.hex">SINGLE LED (Model A)</option>
+    <option value="roulette_dual.hex">DUAL LED (Model B)</option>
+  </select>
+
+  <div class="chamber-container">
+    <div>
+      <h3>CHAMBER 1</h3>
+      <textarea id="c1" placeholder="DELAY 500&#10;STRING Hello World&#10;ENTER"></textarea>
+    </div>
+    <div>
+      <h3>CHAMBER 2</h3>
+      <textarea id="c2" placeholder="GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER"></textarea>
+    </div>
+    <div>
+      <h3>CHAMBER 3</h3>
+      <textarea id="c3" placeholder="GUI SPACE&#10;DELAY 500&#10;STRING Terminal&#10;ENTER"></textarea>
+    </div>
+  </div>
+
+  <button id="burnBtn">COMPILE & FLASH</button>
+  <div id="log">Status: READY</div>
+
+<script>
+// --- DUCKYSCRIPT COMPILER ---
+const KEY_MAP = {
+  'ENTER':0x28, 'ESC':0x29, 'BACKSPACE':0x2A, 'TAB':0x2B, 'SPACE':0x2C, 'MINUS':0x2D, 
+  'EQUAL':0x2E, 'LEFT_BRACE':0x2F, 'RIGHT_BRACE':0x30, 'BACKSLASH':0x31, 'SEMICOLON':0x33, 
+  'QUOTE':0x34, 'GRAVE':0x35, 'COMMA':0x36, 'PERIOD':0x37, 'SLASH':0x38, 'CAPS_LOCK':0x39, 
+  'F1':0x3A, 'F2':0x3B, 'F3':0x3C, 'F4':0x3D, 'F5':0x3E, 'F6':0x3F, 'F7':0x40, 'F8':0x41, 
+  'F9':0x42, 'F10':0x43, 'F11':0x44, 'F12':0x45, 'PRINTSCREEN':0x46, 'SCROLL_LOCK':0x47, 
+  'PAUSE':0x48, 'INSERT':0x49, 'HOME':0x4A, 'PAGE_UP':0x4B, 'DELETE':0x4C, 'END':0x4D, 
+  'PAGE_DOWN':0x4E, 'RIGHT':0x4F, 'LEFT':0x50, 'DOWN':0x51, 'UP':0x52, 'GUI':0xE3, 'WINDOWS':0xE3,
+  'SHIFT':0xE1, 'ALT':0xE2, 'CTRL':0xE0
+};
+
+// Character map for simple ASCII to Keycode (US Layout approximation)
+const ASCII_MAP = {
+  'a':0x04,'b':0x05,'c':0x06,'d':0x07,'e':0x08,'f':0x09,'g':0x0A,'h':0x0B,'i':0x0C,'j':0x0D,
+  'k':0x0E,'l':0x0F,'m':0x10,'n':0x11,'o':0x12,'p':0x13,'q':0x14,'r':0x15,'s':0x16,'t':0x17,
+  'u':0x18,'v':0x19,'w':0x1A,'x':0x1B,'y':0x1C,'z':0x1D,'1':0x1E,'2':0x1F,'3':0x20,'4':0x21,
+  '5':0x22,'6':0x23,'7':0x24,'8':0x25,'9':0x26,'0':0x27,' ':0x2C
+};
+
+function compileDucky(script) {
+  const bytes = [];
+  const lines = script.split('\n');
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line || line.startsWith("REM")) continue;
+    const parts = line.split(' ');
+    const cmd = parts[0].toUpperCase();
+    const args = parts.slice(1).join(' ');
+
+    if (cmd === 'DELAY') {
+      const ms = parseInt(args);
+      bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
+    } 
+    else if (cmd === 'STRING') {
+      bytes.push(0x02, args.length);
+      for (let i = 0; i < args.length; i++) bytes.push(args.charCodeAt(i));
+    }
+    else if (cmd === 'GUI' || cmd === 'WINDOWS') {
+      let key = 0;
+      if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
+      else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
+      bytes.push(0x02, 0x08, key); // OpKey, Mod(GUI=0x08), Key
+    }
+    else if (KEY_MAP[cmd]) {
+      bytes.push(0x02, 0x00, KEY_MAP[cmd]); // OpKey, Mod=0, Key
+    }
+  }
+  bytes.push(0x00); // OP_END
+  return bytes;
+}
+
+// --- HEX PATCHER ---
+function patchHex(hexString, payloadData) {
+  // 1. Convert Intel HEX to Uint8Array Buffer
+  const buffer = new Uint8Array(8192).fill(0xFF); // 8KB Flash
+  const lines = hexString.split('\n');
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (line[0] !== ':') continue;
+    const len = parseInt(line.substr(1, 2), 16);
+    const addr = parseInt(line.substr(3, 4), 16);
+    const type = parseInt(line.substr(7, 2), 16);
+    if (type === 0) { // Data Record
+      for (let i = 0; i < len; i++) {
+        buffer[addr + i] = parseInt(line.substr(9 + i * 2, 2), 16);
+      }
+    }
+  }
+
+  // 2. Find Magic Header: CA FE BA BE
+  let magicIdx = -1;
+  for (let i = 0; i < buffer.length - 4; i++) {
+    if (buffer[i]===0xCA && buffer[i+1]===0xFE && buffer[i+2]===0xBA && buffer[i+3]===0xBE) {
+      magicIdx = i;
+      break;
+    }
+  }
+
+  if (magicIdx === -1) throw new Error("Magic Header not found in firmware template.");
+
+  // 3. Inject Payloads
+  // Structure: [CA FE BA BE] [OFF1_H] [OFF1_L] [OFF2_H] [OFF2_L] [OFF3_H] [OFF3_L] [DATA...]
+  let dataStart = magicIdx + 10; // 4 magic + 6 offsets
+  let currentOffset = 10;
+  
+  // Write Payload 1
+  buffer[magicIdx + 4] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 5] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c1) buffer[magicIdx + dataStart++] = b;
+  currentOffset += payloadData.c1.length;
+  
+  // Write Payload 2
+  buffer[magicIdx + 6] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 7] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c2) buffer[magicIdx + dataStart++] = b;
+  currentOffset += payloadData.c2.length;
+  
+  // Write Payload 3
+  buffer[magicIdx + 8] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 9] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c3) buffer[magicIdx + dataStart++] = b;
+  
+  return buffer;
+}
+
+document.getElementById('burnBtn').addEventListener('click', async () => {
+  const log = document.getElementById('log');
+  const hw = document.getElementById('hwModel').value;
+  
+  try {
+    if (!navigator.usb) throw new Error("WebUSB not supported. Use Chrome/Edge.");
+    
+    // 1. Compile Scripts
+    log.innerText = "COMPILING PAYLOADS...";
+    const payloads = {
+      c1: compileDucky(document.getElementById('c1').value),
+      c2: compileDucky(document.getElementById('c2').value),
+      c3: compileDucky(document.getElementById('c3').value)
+    };
+    
+    // 2. Fetch Firmware Template
+    log.innerText += "\nFETCHING FIRMWARE: " + hw + "...";
+    const resp = await fetch(hw);
+    if (!resp.ok) throw new Error("Failed to load firmware template.");
+    const hexText = await resp.text();
+    
+    // 3. Patch Firmware
+    log.innerText += "\nPATCHING BINARY...";
+    const firmBuffer = patchHex(hexText, payloads);
+    
+    // 4. Flash
+    log.innerText += "\nWAITING FOR DEVICE (PLUG IT IN NOW)...";
+    const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
+    const client = new Micronucleus(device);
+    
+    log.innerText += "\nERASING & UPLOADING...";
+    await client.upload(firmBuffer);
+    
+    log.innerText += "\n\n/// SUCCESS. UNPLUG DEVICE. ///";
+    log.style.color = "#0f0";
+    
+  } catch (e) {
+    log.innerText += "\nERROR: " + e.message;
+    log.style.color = "#f00";
+  }
+});
+</script>
+</body>
+</html>s
