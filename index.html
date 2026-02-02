@@ -2,10 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [STABLE]</title>
+  <title>BADUSB ROULETTE [SMART LOAD]</title>
   
-  <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
-
   <style>
     :root {
       --bg-color: #050505;
@@ -45,7 +43,6 @@
       text-transform: uppercase;
     }
 
-    /* DRIVER STATUS INDICATOR */
     #driverStatus {
       position: absolute;
       top: 10px;
@@ -144,6 +141,9 @@
     .log-ok { color: var(--term-green); }
     .log-warn { color: #ff0; }
     .log-debug { color: #555; }
+    
+    /* Manual Driver Upload (Hidden by default) */
+    #manualDriverInput { display: none; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -151,7 +151,7 @@
   <header>
     <h1>BadUSB Roulette</h1>
     <div class="subtitle">/// UNIFIED PAYLOAD SYSTEM ///</div>
-    <div id="driverStatus">DRIVER: CHECKING...</div>
+    <div id="driverStatus">DRIVER: LOADING...</div>
   </header>
 
   <div id="winWarning">
@@ -166,8 +166,13 @@
     </select>
     
     <label class="file-upload">
-      [ MANUAL LOAD .HEX ]
+      [ MANUAL HEX ]
       <input type="file" id="customHex" accept=".hex">
+    </label>
+    
+    <label class="file-upload" id="manualDriverInput">
+      [ MANUAL DRIVER JS ]
+      <input type="file" id="customDriver" accept=".js">
     </label>
   </div>
 
@@ -220,23 +225,77 @@
   </div>
 
 <script>
-// --- STARTUP CHECKS ---
-window.onload = function() {
-  const statusEl = document.getElementById('driverStatus');
-  if (typeof Micronucleus !== 'undefined') {
-    statusEl.innerText = "DRIVER: ACTIVE";
-    statusEl.className = "status-ok";
-    logMsg("[SYS] Micronucleus Driver Loaded.", 'success');
-  } else {
-    statusEl.innerText = "DRIVER: MISSING";
-    statusEl.className = "status-err";
-    logMsg("[FATAL] Micronucleus Driver NOT found. Check internet/script blockers.", 'error');
+// --- SMART DRIVER LOADER ---
+(function loadDriver() {
+  const sources = [
+    "https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js",
+    "https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@main/lib/micronucleus.js",
+    "https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/micronucleus.js", 
+    "https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@main/micronucleus.js"
+  ];
+  
+  let srcIndex = 0;
+
+  function tryLoad() {
+    if (srcIndex >= sources.length) {
+      logMsg("[FATAL] All Driver CDNs failed. Please upload 'micronucleus.js' manually.", 'error');
+      document.getElementById('driverStatus').innerText = "DRIVER: FAILED";
+      document.getElementById('driverStatus').className = "status-err";
+      document.getElementById('manualDriverInput').style.display = "inline-block";
+      return;
+    }
+
+    const url = sources[srcIndex];
+    logMsg(`[SYS] Trying driver source: ${url}`, 'debug');
+    
+    const script = document.createElement('script');
+    script.src = url;
+    script.onload = function() {
+      if (typeof Micronucleus !== 'undefined') {
+        logMsg(`[SYS] Driver loaded successfully from: ${url}`, 'success');
+        document.getElementById('driverStatus').innerText = "DRIVER: ACTIVE";
+        document.getElementById('driverStatus').className = "status-ok";
+      } else {
+        logMsg(`[WARN] Script loaded but Micronucleus undefined.`, 'warn');
+        srcIndex++; tryLoad();
+      }
+    };
+    script.onerror = function() {
+      logMsg(`[WARN] Failed to load: ${url}`, 'warn');
+      srcIndex++; tryLoad();
+    };
+    document.head.appendChild(script);
   }
 
-  if (navigator.userAgent.indexOf("Win") != -1) {
-    document.getElementById('winWarning').style.display = 'block';
-  }
-};
+  tryLoad();
+})();
+
+// Manual Driver Loader
+document.getElementById('customDriver').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      eval(evt.target.result); // Dangerous but necessary for local injection
+      if (typeof Micronucleus !== 'undefined') {
+        logMsg("[SYS] Manual Driver Loaded.", 'success');
+        document.getElementById('driverStatus').innerText = "DRIVER: ACTIVE (MANUAL)";
+        document.getElementById('driverStatus').className = "status-ok";
+        document.getElementById('manualDriverInput').style.display = "none";
+      }
+    } catch(err) {
+      logMsg("[FATAL] Invalid JS file: " + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+});
+
+// --- UTILS ---
+if (navigator.userAgent.indexOf("Win") != -1) {
+  document.getElementById('winWarning').style.display = 'block';
+}
 
 function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
