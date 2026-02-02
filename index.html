@@ -329,7 +329,8 @@ void signal_done();
 // ==========================================
 void set_led(uint8_t state) {
   #if DUAL_LED_MODE == 1
-    // Dual Mode Failsafe: Use RED PIN 1 for generic blinks if strictly requested
+    // Dual Mode Failsafe: Use RED PIN 1 for generic blinks
+    // This ensures the Infinite Loop of Death is visible.
     digitalWrite(PIN_RED, state);
   #else
     // Single/Universal Mode: Blast BOTH pins.
@@ -760,12 +761,6 @@ document.getElementById('genInoBtn').addEventListener('click', () => {
     let t2 = document.getElementById('c2').value.trim();
     let t3 = document.getElementById('c3').value.trim();
     
-    // SAFETY INJECTOR: If all are empty, inject a default blink script to prevent logic bricking
-    if(t1 === "" && t2 === "" && t3 === "") {
-        t1 = "DELAY 500\\nREPEAT 5\\nDELAY 100"; 
-        logMsg("[WARN] No payloads detected. Injecting safety blink.", 'error');
-    }
-    
     const p1 = compileDucky(t1);
     const p2 = compileDucky(t2);
     const p3 = compileDucky(t3);
@@ -823,3 +818,4 @@ document.getElementById('genInoBtn').addEventListener('click', () => {
 </script>
 </body>
 </html>
+```02/02/2026 1:05 AM
