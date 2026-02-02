@@ -2,9 +2,9 @@
 #define CONFIG_H
 
 // --- HARDWARE SELECTION ---
-// The GitHub Action will toggle this automatically to generate two different .hex files.
-// 0 = Single LED Mode (Onboard)
-// 1 = Dual LED Mode (Green/Red)
+// This file is manipulated by the GitHub Action to generate
+// two distinct firmware templates (Single and Dual).
+// The user selects the correct one via the Web Interface.
 #define DUAL_LED_MODE 0 
 
 // --- PINS ---
