@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE</title>
+  <title>BADUSB ROULETTE [DEBUG]</title>
   <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
   <style>
     :root {
@@ -18,7 +18,7 @@
     body {
       background-color: var(--bg-color);
       color: var(--term-green);
-      font-family: 'Courier New', monospace;
+      font-family: 'Consolas', 'Monaco', monospace; /* Changed to generic mono for readability */
       margin: 0;
       padding: 0;
       display: flex;
@@ -28,80 +28,42 @@
       overflow-x: hidden;
     }
 
-    /* --- SCANLINES --- */
-    body::before {
-      content: " ";
-      display: block;
-      position: fixed;
-      top: 0; left: 0; bottom: 0; right: 0;
-      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-      z-index: 2;
-      background-size: 100% 2px, 3px 100%;
-      pointer-events: none;
-    }
-
     /* --- HEADER --- */
     header {
       width: 100%;
-      padding: 40px 0;
+      padding: 20px 0;
       text-align: center;
-      border-bottom: 2px solid var(--term-dim);
+      border-bottom: 1px solid var(--term-dim);
       margin-bottom: 20px;
     }
 
     h1 {
-      font-size: 3rem;
-      letter-spacing: 10px;
+      font-size: 2rem;
+      letter-spacing: 5px;
       margin: 0;
-      text-shadow: 0 0 10px var(--term-green);
       text-transform: uppercase;
     }
 
     .subtitle {
-      font-size: 1rem;
+      font-size: 0.8rem;
       color: var(--term-dim);
-      letter-spacing: 2px;
-      margin-top: 10px;
+      margin-top: 5px;
     }
 
     /* --- WINDOWS ALERT --- */
     #winWarning {
-      display: none; /* Toggled by JS */
+      display: none;
       width: 95%;
       max-width: 800px;
-      border: 2px solid var(--alert-red);
-      background: rgba(20, 0, 0, 0.8);
-      margin-bottom: 30px;
-      text-align: center;
+      border: 1px solid var(--alert-red);
+      background: rgba(50, 0, 0, 0.5);
+      margin-bottom: 20px;
+      text-align: left;
       color: var(--alert-red);
-      padding: 15px;
-      box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
+      padding: 10px;
+      font-size: 0.8rem;
     }
-
-    .warning-header {
-      font-weight: bold;
-      letter-spacing: 2px;
-      border-bottom: 1px solid var(--alert-red);
-      padding-bottom: 10px;
-      margin-bottom: 10px;
-      font-size: 1.2rem;
-    }
-
-    .warning-content {
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-
-    .warning-content a {
-      color: #fff;
-      font-weight: bold;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    
-    .warning-content a:hover {
-      color: var(--term-green);
-    }
+    #winWarning a { color: #fff; text-decoration: underline; }
 
     /* --- ARMORY --- */
     .armory-controls {
@@ -111,45 +73,35 @@
       align-items: center;
       flex-wrap: wrap;
       justify-content: center;
+      font-size: 0.9rem;
     }
 
     select {
       background: #000;
       color: var(--term-green);
-      border: 1px solid var(--term-green);
-      padding: 10px;
+      border: 1px solid #333;
+      padding: 8px;
       font-family: inherit;
-      text-transform: uppercase;
       cursor: pointer;
     }
 
-    /* Custom File Upload */
     .file-upload {
-      border: 1px dashed var(--term-dim);
+      border: 1px solid #333;
       padding: 8px;
       cursor: pointer;
-      font-size: 0.8rem;
-      color: #666;
+      color: #888;
     }
     .file-upload:hover { border-color: var(--term-green); color: var(--term-green); }
     input[type="file"] { display: none; }
 
-    /* Mutation Controls inside headers */
-    .mutation-select {
-      font-size: 0.7rem;
-      padding: 2px 5px;
-      border: 1px solid #333;
-      color: #666;
-    }
-    .mutation-select:hover { border-color: var(--term-green); color: var(--term-green); }
-
+    /* --- CHAMBERS --- */
     .chamber-grid {
       display: flex;
-      gap: 20px;
+      gap: 15px;
       width: 95%;
       max-width: 1600px;
       flex: 1;
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
 
     .chamber {
@@ -158,124 +110,105 @@
       border: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
-      transition: 0.3s;
-      position: relative;
-    }
-
-    .chamber:hover {
-      border-color: var(--term-green);
-      box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
     }
 
     .chamber-header {
       background: #111;
       border-bottom: 1px solid #333;
-      padding: 10px 15px;
+      padding: 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.9rem;
-      letter-spacing: 2px;
+      font-size: 0.8rem;
+    }
+    
+    .mutation-select {
+        background: #000;
+        color: #666;
+        border: 1px solid #333;
+        font-size: 0.7rem;
     }
 
     textarea {
       flex: 1;
       background: #000;
-      color: #aaa;
+      color: #ccc;
       border: none;
-      padding: 15px;
+      padding: 10px;
       resize: none;
       font-family: 'Consolas', monospace;
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.4;
       outline: none;
-      min-height: 400px;
+      min-height: 300px;
     }
 
-    textarea:focus { color: #fff; background: #080808; }
-
     /* --- TRIGGER --- */
-    .trigger-zone { width: 100%; text-align: center; padding-bottom: 30px; }
+    .trigger-zone { width: 100%; text-align: center; padding-bottom: 20px; }
     
     button#burnBtn {
       background: #000;
       color: var(--term-green);
       border: 2px solid var(--term-green);
-      padding: 20px 60px;
-      font-size: 1.5rem;
-      letter-spacing: 5px;
+      padding: 15px 40px;
+      font-size: 1.2rem;
+      letter-spacing: 2px;
       cursor: pointer;
       text-transform: uppercase;
-      transition: 0.2s;
     }
-
-    button#burnBtn:hover {
-      background: var(--term-green);
-      color: #000;
-      box-shadow: 0 0 30px var(--term-green);
-    }
+    button#burnBtn:hover { background: var(--term-green); color: #000; }
 
     /* --- CONSOLE --- */
     .console-wrapper {
       width: 95%;
       max-width: 1600px;
       background: #000;
-      border: 1px solid var(--term-dim);
-      margin-bottom: 50px;
+      border: 1px solid #333;
+      margin-bottom: 40px;
     }
     .console-header {
-      background: var(--panel-bg);
-      border-bottom: 1px solid var(--term-dim);
+      background: #111;
+      border-bottom: 1px solid #333;
       padding: 5px 10px;
-      font-size: 0.8rem;
-      color: var(--term-dim);
-      letter-spacing: 2px;
+      font-size: 0.75rem;
+      color: #666;
     }
     #log {
-      height: 200px;
+      height: 300px; /* Taller for debug logs */
       overflow-y: scroll;
       padding: 10px;
       font-family: 'Consolas', monospace;
-      font-size: 0.9rem;
-      color: #888;
+      font-size: 0.85rem;
+      color: #aaa;
+      white-space: pre-wrap; /* Preserve formatting */
     }
-    .log-line { margin-bottom: 2px; }
+    .log-line { border-bottom: 1px solid #111; padding: 2px 0; }
     .log-err { color: var(--alert-red); }
     .log-ok { color: var(--term-green); }
     .log-warn { color: #ff0; }
+    .log-debug { color: #555; }
   </style>
 </head>
 <body>
 
   <header>
     <h1>BadUSB Roulette</h1>
-    <div class="subtitle">/// UNIFIED PAYLOAD FABRICATION SYSTEM ///</div>
+    <div class="subtitle">/// DIAGNOSTIC MODE ACTIVE ///</div>
   </header>
 
   <div id="winWarning">
-    <div class="warning-header">/// ENVIRONMENT WARNING: WINDOWS DETECTED ///</div>
-    <div class="warning-content">
-      CRITICAL DRIVER MISMATCH LIKELY.<br>
-      WEBUSB REQUIRES THE <strong>WinUSB</strong> DRIVER.<br><br>
-      <div style="text-align: left; display: inline-block;">
-        1. <a href="https://zadig.akeo.ie/" target="_blank">DOWNLOAD ZADIG</a><br>
-        2. CONNECT DIGISPARK<br>
-        3. OPTIONS > 'LIST ALL DEVICES'<br>
-        4. SELECT 'DIGISPARK BOOTLOADER'<br>
-        5. REPLACE DRIVER WITH <strong>WinUSB</strong>
-      </div>
-    </div>
+    <strong>WINDOWS DETECTED:</strong> WebUSB requires the <strong>WinUSB</strong> driver via <a href="https://zadig.akeo.ie/" target="_blank">Zadig</a>.
   </div>
 
   <div class="armory-controls">
-    <label>HARDWARE CONFIGURATION:</label>
+    <label>TARGET:</label>
     <select id="hwModel">
-      <option value="roulette_single.hex">SINGLE LED (MODEL A / REV 2)</option>
-      <option value="roulette_dual.hex">DUAL LED (MODEL B / REV 1)</option>
+      <option value="roulette_single.hex">SINGLE LED</option>
+      <option value="roulette_dual.hex">DUAL LED</option>
     </select>
     
     <label class="file-upload">
-      [ MANUAL OVERRIDE: LOAD .HEX ]
+      [ MANUAL LOAD .HEX ]
       <input type="file" id="customHex" accept=".hex">
     </label>
   </div>
@@ -283,42 +216,36 @@
   <div class="chamber-grid">
     <div class="chamber">
       <div class="chamber-header">
-        CHAMBER 01
+        C1
         <select class="mutation-select" onchange="mutate(this, 'c1')">
-          <option value="" disabled selected>MUTATE...</option>
-          <option value="WIN">TO WINDOWS</option>
-          <option value="MAC">TO MAC</option>
-          <option value="LINUX">TO LINUX</option>
-          <option value="ANDROID">TO ANDROID</option>
-          <option value="IOS">TO IOS</option>
+          <option value="" disabled selected>MUTATE</option>
+          <option value="WIN">WIN</option>
+          <option value="MAC">MAC</option>
+          <option value="LINUX">LINUX</option>
         </select>
       </div>
       <textarea id="c1" placeholder="// WINDOWS PAYLOAD&#10;DELAY 1000&#10;GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER"></textarea>
     </div>
     <div class="chamber">
       <div class="chamber-header">
-        CHAMBER 02
+        C2
         <select class="mutation-select" onchange="mutate(this, 'c2')">
-          <option value="" disabled selected>MUTATE...</option>
-          <option value="WIN">TO WINDOWS</option>
-          <option value="MAC">TO MAC</option>
-          <option value="LINUX">TO LINUX</option>
-          <option value="ANDROID">TO ANDROID</option>
-          <option value="IOS">TO IOS</option>
+          <option value="" disabled selected>MUTATE</option>
+          <option value="WIN">WIN</option>
+          <option value="MAC">MAC</option>
+          <option value="LINUX">LINUX</option>
         </select>
       </div>
       <textarea id="c2" placeholder="// MAC PAYLOAD&#10;DELAY 1000&#10;GUI SPACE&#10;DELAY 200&#10;STRING Terminal&#10;ENTER"></textarea>
     </div>
     <div class="chamber">
       <div class="chamber-header">
-        CHAMBER 03
+        C3
         <select class="mutation-select" onchange="mutate(this, 'c3')">
-          <option value="" disabled selected>MUTATE...</option>
-          <option value="WIN">TO WINDOWS</option>
-          <option value="MAC">TO MAC</option>
-          <option value="LINUX">TO LINUX</option>
-          <option value="ANDROID">TO ANDROID</option>
-          <option value="IOS">TO IOS</option>
+          <option value="" disabled selected>MUTATE</option>
+          <option value="WIN">WIN</option>
+          <option value="MAC">MAC</option>
+          <option value="LINUX">LINUX</option>
         </select>
       </div>
       <textarea id="c3" placeholder="// LINUX PAYLOAD&#10;DELAY 1000&#10;GUI&#10;DELAY 200&#10;STRING firefox&#10;ENTER"></textarea>
@@ -330,12 +257,12 @@
   </div>
 
   <div class="console-wrapper">
-    <div class="console-header">/// SYSTEM OUTPUT ///</div>
+    <div class="console-header">/// SERIAL LOG ///</div>
     <div id="log"></div>
   </div>
 
 <script>
-// ENVIRONMENT CHECK
+// --- UTILS ---
 if (navigator.userAgent.indexOf("Win") != -1) {
   document.getElementById('winWarning').style.display = 'block';
 }
@@ -343,12 +270,16 @@ if (navigator.userAgent.indexOf("Win") != -1) {
 function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
   const line = document.createElement('div');
-  line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : '');
-  line.innerText = `[${new Date().toLocaleTimeString('en-US',{hour12:false})}] ${msg}`;
+  line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : type === 'debug' ? 'log-debug' : '');
+  
+  const timestamp = new Date().toLocaleTimeString('en-US',{hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 3});
+  line.innerText = `[${timestamp}] ${msg}`;
+  
   logEl.appendChild(line);
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+// --- DUCKYSCRIPT COMPILER ---
 const KEY_MAP = {
   'ENTER':0x28, 'ESC':0x29, 'BACKSPACE':0x2A, 'TAB':0x2B, 'SPACE':0x2C, 'MINUS':0x2D, 
   'EQUAL':0x2E, 'LEFT_BRACE':0x2F, 'RIGHT_BRACE':0x30, 'BACKSLASH':0x31, 'SEMICOLON':0x33, 
@@ -366,46 +297,6 @@ const ASCII_MAP = {
   'u':0x18,'v':0x19,'w':0x1A,'x':0x1B,'y':0x1C,'z':0x1D,'1':0x1E,'2':0x1F,'3':0x20,'4':0x21,
   '5':0x22,'6':0x23,'7':0x24,'8':0x25,'9':0x26,'0':0x27,' ':0x2C
 };
-
-/* --- MUTATION ENGINE --- */
-function mutate(selector, targetId) {
-  const mode = selector.value;
-  const area = document.getElementById(targetId);
-  let script = area.value;
-  
-  if (!script) return;
-  logMsg(`MUTATING CHAMBER ${targetId.toUpperCase()} TO ${mode}...`, 'warn');
-
-  // NORMALIZE
-  script = script
-    .replace(/GUI r\b/gi, '###RUN###')        // Win
-    .replace(/GUI SPACE\b/gi, '###RUN###')    // Mac/iOS
-    .replace(/ALT F2\b/gi, '###RUN###')       // Linux
-    .replace(/COMMAND\b/gi, '###GUI###')      // Mac
-    .replace(/WINDOWS\b/gi, '###GUI###')      // Win
-    .replace(/GUI\b/gi, '###GUI###');         // Generic
-
-  // APPLY
-  switch(mode) {
-    case 'WIN':
-      script = script.replace(/###RUN###/g, 'GUI r').replace(/###GUI###/g, 'GUI').replace(/OPTION\b/gi, 'ALT');
-      break;
-    case 'MAC':
-      script = script.replace(/###RUN###/g, 'GUI SPACE').replace(/###GUI###/g, 'COMMAND').replace(/ALT\b/gi, 'OPTION').replace(/CTRL\b/gi, 'COMMAND'); 
-      break;
-    case 'LINUX':
-      script = script.replace(/###RUN###/g, 'ALT F2').replace(/###GUI###/g, 'GUI').replace(/COMMAND\b/gi, 'CTRL').replace(/OPTION\b/gi, 'ALT');
-      break;
-    case 'ANDROID':
-      script = script.replace(/###RUN###/g, 'GUI b').replace(/###GUI###/g, 'GUI');
-      break;
-    case 'IOS':
-      script = script.replace(/###RUN###/g, 'GUI SPACE').replace(/###GUI###/g, 'COMMAND');
-      break;
-  }
-  area.value = script;
-  selector.selectedIndex = 0; 
-}
 
 function compileDucky(script) {
   const bytes = [];
@@ -443,6 +334,7 @@ function compileDucky(script) {
   return bytes;
 }
 
+// --- HEX PATCHER ---
 function patchHex(hexString, payloadData) {
   const buffer = new Uint8Array(8192).fill(0xFF); 
   const lines = hexString.split('\n');
@@ -472,7 +364,7 @@ function patchHex(hexString, payloadData) {
       buffer[magicIdx + offL_idx] = 0x00;
       return; 
     }
-    if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE - FLASH OVERFLOW");
+    if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE");
 
     buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
@@ -487,146 +379,155 @@ function patchHex(hexString, payloadData) {
   return buffer;
 }
 
-/* --- TELEMETRY & AMMUNITION LOGIC --- */
+function mutate(selector, targetId) {
+  const mode = selector.value;
+  const area = document.getElementById(targetId);
+  let script = area.value;
+  if (!script) return;
+  script = script
+    .replace(/GUI r\b/gi, '###RUN###').replace(/GUI SPACE\b/gi, '###RUN###').replace(/ALT F2\b/gi, '###RUN###')
+    .replace(/COMMAND\b/gi, '###GUI###').replace(/WINDOWS\b/gi, '###GUI###').replace(/GUI\b/gi, '###GUI###');
+  switch(mode) {
+    case 'WIN': script = script.replace(/###RUN###/g, 'GUI r').replace(/###GUI###/g, 'GUI').replace(/OPTION\b/gi, 'ALT'); break;
+    case 'MAC': script = script.replace(/###RUN###/g, 'GUI SPACE').replace(/###GUI###/g, 'COMMAND').replace(/ALT\b/gi, 'OPTION').replace(/CTRL\b/gi, 'COMMAND'); break;
+    case 'LINUX': script = script.replace(/###RUN###/g, 'ALT F2').replace(/###GUI###/g, 'GUI').replace(/COMMAND\b/gi, 'CTRL').replace(/OPTION\b/gi, 'ALT'); break;
+  }
+  area.value = script;
+  selector.selectedIndex = 0; 
+}
 
-// 1. Manual Override
+// --- NETWORK OPS ---
+
 let customHexData = null;
 document.getElementById('customHex').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (file) {
     customHexData = await file.text();
-    logMsg(`MANUAL OVERRIDE: LOADED ${file.name}`, 'warn');
+    logMsg(`FILE LOADED: ${file.name} (${file.size} bytes)`, 'success');
   }
 });
 
-// 2. Factory Radar (The Progress Monitor)
-async function monitorFactory(user, repo) {
-  let attempts = 0;
-  const maxAttempts = 24; // 2 minutes (24 * 5s)
+async function checkGitHubStatus(user, repo) {
+  const url = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=1`;
+  logMsg(`[API] GET ${url}`, 'debug');
   
-  while (attempts < maxAttempts) {
+  try {
+    const resp = await fetch(url);
+    logMsg(`[API] Status: ${resp.status}`, 'debug');
+    
+    if (resp.status === 403) return { status: 'RATE_LIMITED' };
+    if (!resp.ok) return { status: 'ERROR', code: resp.status };
+    
+    const data = await resp.json();
+    if (!data.workflow_runs || data.workflow_runs.length === 0) return { status: 'NO_RUNS' };
+    
+    const run = data.workflow_runs[0];
+    logMsg(`[API] Run ID: ${run.id} | Name: ${run.name}`, 'debug');
+    logMsg(`[API] Status: ${run.status} | Conclusion: ${run.conclusion}`, 'debug');
+    
+    return { 
+      status: run.status, 
+      conclusion: run.conclusion,
+      name: run.name
+    };
+  } catch (e) {
+    logMsg(`[API] Error: ${e.message}`, 'error');
+    return { status: 'EXCEPTION' };
+  }
+}
+
+async function fetchWithRetry(url) {
+  const MAX_RETRIES = 24; // 2 minutes
+  
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    // Add timestamp to prevent caching
+    const targetUrl = `${url}?t=${Date.now()}`;
+    logMsg(`[HTTP] GET ${targetUrl}`, 'debug');
+    
     try {
-      const api = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=1`;
-      const resp = await fetch(api);
+      const resp = await fetch(targetUrl);
+      logMsg(`[HTTP] Response: ${resp.status} ${resp.statusText}`, resp.ok ? 'success' : 'debug');
       
-      if (resp.status === 403) {
-        logMsg("RADAR JAMMED (API RATE LIMIT). WAIT BLINDLY...", 'error');
-        await new Promise(r => setTimeout(r, 10000));
-        attempts++;
+      if (resp.ok) return await resp.text();
+      
+      // If 404, wait and retry
+      if (resp.status === 404) {
+        logMsg(`[WAIT] 404 Not Found. Retry ${i+1}/${MAX_RETRIES} in 5s...`, 'warn');
+        await new Promise(r => setTimeout(r, 5000));
         continue;
       }
       
-      const data = await resp.json();
-      if (data.workflow_runs && data.workflow_runs.length > 0) {
-        const run = data.workflow_runs[0];
-        
-        if (run.status === 'queued') {
-          logMsg(`FACTORY: JOB QUEUED [${run.name}]...`, 'warn');
-        } else if (run.status === 'in_progress') {
-          logMsg(`FACTORY: FORGING AMMO [${run.name}]...`, 'warn');
-        } else if (run.status === 'completed' && run.conclusion === 'success') {
-          logMsg(`FACTORY: SHIPMENT CONFIRMED.`, 'success');
-          return true; // Success! Break loop and retry fetch
-        } else if (run.status === 'completed' && run.conclusion === 'failure') {
-          logMsg(`FACTORY: BUILD FAILED. ABORTING.`, 'error');
-          return false;
-        }
-      }
+      // Other errors are fatal
+      throw new Error(`HTTP ${resp.status}`);
+      
     } catch (e) {
-      console.log("Radar glitch", e);
+      logMsg(`[NET] Error: ${e.message}`, 'error');
+      // If network error, wait and retry
+      await new Promise(r => setTimeout(r, 5000));
     }
-    
-    // Wait 5 seconds before next ping
-    await new Promise(r => setTimeout(r, 5000));
-    attempts++;
   }
-  
-  logMsg("RADAR TIMEOUT. FACTORY UNRESPONSIVE.", 'error');
-  return false;
+  throw new Error("TIMEOUT: File not found after 2 minutes");
 }
 
-// 3. Remote Fetcher with Radar Integration + DELIVERY LOOP
-async function fetchTemplate(filename) {
-  // A. Check for Manual Override
-  if (customHexData) {
-    logMsg("USING MANUAL OVERRIDE DATA...", 'warn');
-    return customHexData;
+async function acquireFirmware(filename) {
+  // 1. Manual Override
+  if (customHexData) return customHexData;
+
+  // 2. Identify Repo
+  let user = 'hereliesaz';
+  let repo = 'BadUSB-Roulette';
+  if (window.location.hostname.includes('github.io')) {
+     user = window.location.hostname.split('.')[0];
+     repo = window.location.pathname.split('/')[1] || repo;
   }
+  logMsg(`[CFG] Repo: ${user}/${repo}`, 'debug');
 
-  const getCacheBust = () => "?t=" + new Date().getTime();
-  let firmPath = `firmware/${filename}${getCacheBust()}`;
+  // 3. Construct URL
+  // Try firmware/ subdirectory first
+  const firmwareUrl = `https://${user}.github.io/${repo}/firmware/${filename}`;
+  
+  // 4. Check Factory Status (Just for info)
+  await checkGitHubStatus(user, repo);
 
-  try {
-    // Try Bunker First
-    logMsg(`CHECKING BUNKER: ${firmPath}`, 'warn');
-    let resp = await fetch(firmPath);
-    if (resp.ok) return await resp.text();
-    
-    throw new Error(resp.status);
-
-  } catch (e) {
-    logMsg(`BUNKER EMPTY (${e.message}). SCANNING FACTORY...`, 'warn');
-    
-    // Auto-detect User/Repo
-    let user = 'hereliesaz';
-    let repo = 'BadUSB-Roulette';
-    const hostname = window.location.hostname;
-    const pathname = window.location.pathname;
-    if (hostname.includes('github.io')) {
-       user = hostname.split('.')[0];
-       repo = pathname.split('/')[1] || repo;
-    }
-
-    // ENGAGE RADAR
-    const factorySuccess = await monitorFactory(user, repo);
-    
-    if (factorySuccess) {
-      logMsg("FACTORY SAYS DONE. WAITING FOR DELIVERY TRUCK (CDN)...", 'warn');
-      
-      // DELIVERY LOOP: Poll for CDN propagation (Max 90 seconds)
-      for(let i=0; i<18; i++) {
-         await new Promise(r => setTimeout(r, 5000));
-         const currentPath = `firmware/${filename}${getCacheBust()}`;
-         
-         logMsg(`CHECKING LOADING DOCK... (${i+1}/18)`, 'warn');
-         let resp = await fetch(currentPath);
-         if (resp.ok) {
-           logMsg("PACKAGE SECURED.", 'success');
-           return await resp.text();
-         }
-      }
-    }
-    
-    throw new Error("UNABLE TO ACQUIRE FIRMWARE AFTER WAIT");
-  }
+  // 5. Start Polling
+  logMsg(`[ACQ] Attempting to acquire: ${filename}`, 'normal');
+  return await fetchWithRetry(firmwareUrl);
 }
 
 document.getElementById('burnBtn').addEventListener('click', async () => {
   const hw = document.getElementById('hwModel').value;
   try {
-    if (!navigator.usb) throw new Error("WEBUSB NOT SUPPORTED (USE CHROME/EDGE)");
+    if (!navigator.usb) throw new Error("WebUSB not supported");
     
-    logMsg("COMPILING...");
+    logMsg("--- STARTING SEQUENCE ---");
+    
+    // 1. Compile
     const payloads = {
       c1: compileDucky(document.getElementById('c1').value),
       c2: compileDucky(document.getElementById('c2').value),
       c3: compileDucky(document.getElementById('c3').value)
     };
+    logMsg("[CMP] Compilation Complete", 'success');
     
-    const hexText = await fetchTemplate(hw);
+    // 2. Fetch
+    const hexText = await acquireFirmware(hw);
+    logMsg(`[HEX] Firmware loaded (${hexText.length} bytes)`, 'success');
     
+    // 3. Patch
     const firmBuffer = patchHex(hexText, payloads);
+    logMsg("[PAT] Firmware Patched", 'success');
     
-    logMsg("SEARCHING FOR DIGISPARK... (PLUG IN NOW)");
+    // 4. Flash
+    logMsg("[USB] Requesting Device...", 'warn');
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
     const client = new Micronucleus(device);
     
-    logMsg("FLASHING...", 'warn');
+    logMsg("[USB] Flashing...", 'warn');
     await client.upload(firmBuffer);
-    logMsg("COMPLETE. DISCONNECT.", 'success');
+    logMsg("--- FLASH COMPLETE ---", 'success');
     
   } catch (e) {
-    logMsg("ERROR: " + e.message, 'error');
+    logMsg(`[FATAL] ${e.message}`, 'error');
   }
 });
 </script>
