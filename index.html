@@ -121,6 +121,15 @@
       cursor: pointer;
     }
 
+    /* Mutation Controls inside headers */
+    .mutation-select {
+      font-size: 0.7rem;
+      padding: 2px 5px;
+      border: 1px solid #333;
+      color: #666;
+    }
+    .mutation-select:hover { border-color: var(--term-green); color: var(--term-green); }
+
     .chamber-grid {
       display: flex;
       gap: 20px;
@@ -255,13 +264,275 @@
 
   <div class="chamber-grid">
     <div class="chamber">
-      <div class="chamber-header">CHAMBER 01</div>
+      <div class="chamber-header">
+        CHAMBER 01
+        <select class="mutation-select" onchange="mutate(this, 'c1')">
+          <option value="" disabled selected>MUTATE...</option>
+          <option value="WIN">TO WINDOWS</option>
+          <option value="MAC">TO MAC</option>
+          <option value="LINUX">TO LINUX</option>
+          <option value="ANDROID">TO ANDROID</option>
+          <option value="IOS">TO IOS</option>
+        </select>
+      </div>
       <textarea id="c1" placeholder="// WINDOWS PAYLOAD&#10;DELAY 1000&#10;GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER"></textarea>
     </div>
     <div class="chamber">
-      <div class="chamber-header">CHAMBER 02</div>
+      <div class="chamber-header">
+        CHAMBER 02
+        <select class="mutation-select" onchange="mutate(this, 'c2')">
+          <option value="" disabled selected>MUTATE...</option>
+          <option value="WIN">TO WINDOWS</option>
+          <option value="MAC">TO MAC</option>
+          <option value="LINUX">TO LINUX</option>
+          <option value="ANDROID">TO ANDROID</option>
+          <option value="IOS">TO IOS</option>
+        </select>
+      </div>
       <textarea id="c2" placeholder="// MAC PAYLOAD&#10;DELAY 1000&#10;GUI SPACE&#10;DELAY 200&#10;STRING Terminal&#10;ENTER"></textarea>
     </div>
     <div class="chamber">
-      <div class="chamber-header">CHAMBER 03</div>
-      <textarea id="c3" placeholder="// LINUX PAYLOAD&#10;DELAY 1000&#10;GUI&#10;DELAY 200
+      <div class="chamber-header">
+        CHAMBER 03
+        <select class="mutation-select" onchange="mutate(this, 'c3')">
+          <option value="" disabled selected>MUTATE...</option>
+          <option value="WIN">TO WINDOWS</option>
+          <option value="MAC">TO MAC</option>
+          <option value="LINUX">TO LINUX</option>
+          <option value="ANDROID">TO ANDROID</option>
+          <option value="IOS">TO IOS</option>
+        </select>
+      </div>
+      <textarea id="c3" placeholder="// LINUX PAYLOAD&#10;DELAY 1000&#10;GUI&#10;DELAY 200&#10;STRING firefox&#10;ENTER"></textarea>
+    </div>
+  </div>
+
+  <div class="trigger-zone">
+    <button id="burnBtn">FLASH FIRMWARE</button>
+  </div>
+
+  <div class="console-wrapper">
+    <div class="console-header">/// SYSTEM OUTPUT ///</div>
+    <div id="log"></div>
+  </div>
+
+<script>
+// ENVIRONMENT CHECK
+if (navigator.userAgent.indexOf("Win") != -1) {
+  document.getElementById('winWarning').style.display = 'block';
+}
+
+function logMsg(msg, type='normal') {
+  const logEl = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : '');
+  line.innerText = `[${new Date().toLocaleTimeString('en-US',{hour12:false})}] ${msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+const KEY_MAP = {
+  'ENTER':0x28, 'ESC':0x29, 'BACKSPACE':0x2A, 'TAB':0x2B, 'SPACE':0x2C, 'MINUS':0x2D, 
+  'EQUAL':0x2E, 'LEFT_BRACE':0x2F, 'RIGHT_BRACE':0x30, 'BACKSLASH':0x31, 'SEMICOLON':0x33, 
+  'QUOTE':0x34, 'GRAVE':0x35, 'COMMA':0x36, 'PERIOD':0x37, 'SLASH':0x38, 'CAPS_LOCK':0x39, 
+  'F1':0x3A, 'F2':0x3B, 'F3':0x3C, 'F4':0x3D, 'F5':0x3E, 'F6':0x3F, 'F7':0x40, 'F8':0x41, 
+  'F9':0x42, 'F10':0x43, 'F11':0x44, 'F12':0x45, 'PRINTSCREEN':0x46, 'SCROLL_LOCK':0x47, 
+  'PAUSE':0x48, 'INSERT':0x49, 'HOME':0x4A, 'PAGE_UP':0x4B, 'DELETE':0x4C, 'END':0x4D, 
+  'PAGE_DOWN':0x4E, 'RIGHT':0x4F, 'LEFT':0x50, 'DOWN':0x51, 'UP':0x52, 'GUI':0xE3, 'WINDOWS':0xE3,
+  'COMMAND':0xE3, 'SHIFT':0xE1, 'ALT':0xE2, 'CTRL':0xE0
+};
+
+const ASCII_MAP = {
+  'a':0x04,'b':0x05,'c':0x06,'d':0x07,'e':0x08,'f':0x09,'g':0x0A,'h':0x0B,'i':0x0C,'j':0x0D,
+  'k':0x0E,'l':0x0F,'m':0x10,'n':0x11,'o':0x12,'p':0x13,'q':0x14,'r':0x15,'s':0x16,'t':0x17,
+  'u':0x18,'v':0x19,'w':0x1A,'x':0x1B,'y':0x1C,'z':0x1D,'1':0x1E,'2':0x1F,'3':0x20,'4':0x21,
+  '5':0x22,'6':0x23,'7':0x24,'8':0x25,'9':0x26,'0':0x27,' ':0x2C
+};
+
+/* --- MUTATION ENGINE --- */
+function mutate(selector, targetId) {
+  const mode = selector.value;
+  const area = document.getElementById(targetId);
+  let script = area.value;
+  
+  if (!script) return;
+  logMsg(`MUTATING CHAMBER ${targetId.toUpperCase()} TO ${mode}...`, 'warn');
+
+  // NORMALIZE (Remove specific OS artifacts first)
+  script = script
+    .replace(/GUI r\b/gi, '###RUN###')        // Win
+    .replace(/GUI SPACE\b/gi, '###RUN###')    // Mac/iOS
+    .replace(/ALT F2\b/gi, '###RUN###')       // Linux
+    .replace(/COMMAND\b/gi, '###GUI###')      // Mac
+    .replace(/WINDOWS\b/gi, '###GUI###')      // Win
+    .replace(/GUI\b/gi, '###GUI###');         // Generic
+
+  // APPLY TARGET SPECIFIC LOGIC
+  switch(mode) {
+    case 'WIN':
+      script = script.replace(/###RUN###/g, 'GUI r');
+      script = script.replace(/###GUI###/g, 'GUI');
+      // Fix modifiers
+      script = script.replace(/OPTION\b/gi, 'ALT');
+      break;
+      
+    case 'MAC':
+      script = script.replace(/###RUN###/g, 'GUI SPACE');
+      script = script.replace(/###GUI###/g, 'COMMAND');
+      // Fix modifiers
+      script = script.replace(/ALT\b/gi, 'OPTION');
+      script = script.replace(/CTRL\b/gi, 'COMMAND'); 
+      break;
+
+    case 'LINUX':
+      script = script.replace(/###RUN###/g, 'ALT F2'); // Gnome Run
+      script = script.replace(/###GUI###/g, 'GUI');
+      // Fix modifiers
+      script = script.replace(/COMMAND\b/gi, 'CTRL');
+      script = script.replace(/OPTION\b/gi, 'ALT');
+      break;
+
+    case 'ANDROID':
+      // Android is tricky. GUI usually triggers Assistant. 
+      // We will assume GUI b = Browser, but often it's just searching.
+      script = script.replace(/###RUN###/g, 'GUI b'); 
+      script = script.replace(/###GUI###/g, 'GUI');
+      break;
+      
+    case 'IOS':
+      script = script.replace(/###RUN###/g, 'GUI SPACE'); // Spotlight
+      script = script.replace(/###GUI###/g, 'COMMAND');
+      break;
+  }
+
+  area.value = script;
+  selector.selectedIndex = 0; // Reset dropdown
+}
+
+function compileDucky(script) {
+  const bytes = [];
+  const lines = script.split('\n');
+  for (let line of lines) {
+    line = line.trim();
+    if (!line || line.startsWith("REM") || line.startsWith("//") || line.startsWith("#")) continue;
+    
+    const parts = line.split(' ');
+    const cmd = parts[0].toUpperCase();
+    const args = parts.slice(1).join(' ');
+
+    if (cmd === 'DELAY') {
+      const ms = parseInt(args);
+      bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
+    } 
+    else if (cmd === 'STRING') {
+      // Chunking for strings > 255 chars
+      for (let i = 0; i < args.length; i += 255) {
+        const chunk = args.substring(i, Math.min(i + 255, args.length));
+        bytes.push(0x03, chunk.length); // 0x03 is OP_PRINT
+        for (let c = 0; c < chunk.length; c++) bytes.push(chunk.charCodeAt(c));
+      }
+    }
+    else if (cmd === 'GUI' || cmd === 'WINDOWS' || cmd === 'COMMAND') {
+      let key = 0;
+      if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
+      else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
+      bytes.push(0x02, 0x08, key); // OP_KEY (2) + MOD_GUI (8) + Key
+    }
+    else if (KEY_MAP[cmd]) { 
+      bytes.push(0x02, 0x00, KEY_MAP[cmd]); 
+    }
+  }
+  bytes.push(0x00); // OP_END
+  return bytes;
+}
+
+function patchHex(hexString, payloadData) {
+  const buffer = new Uint8Array(8192).fill(0xFF); 
+  const lines = hexString.split('\n');
+  for (let line of lines) {
+    line = line.trim();
+    if (line[0] !== ':') continue;
+    const len = parseInt(line.substr(1, 2), 16);
+    const addr = parseInt(line.substr(3, 4), 16);
+    const type = parseInt(line.substr(7, 2), 16);
+    if (type === 0) { 
+      for (let i = 0; i < len; i++) { buffer[addr + i] = parseInt(line.substr(9 + i * 2, 2), 16); }
+    }
+  }
+
+  let magicIdx = -1;
+  for (let i = 0; i < buffer.length - 4; i++) {
+    if (buffer[i]===0xCA && buffer[i+1]===0xFE && buffer[i+2]===0xBA && buffer[i+3]===0xBE) {
+      magicIdx = i; break;
+    }
+  }
+
+  if (magicIdx === -1) throw new Error("TEMPLATE INVALID: MAGIC HEADER NOT FOUND");
+
+  // Header is 10 bytes: MAGIC (4) + 3 * OFFSETS (2)
+  let dataStart = magicIdx + 10; 
+  let currentOffset = 10;
+  
+  function inject(payload, offH_idx, offL_idx) {
+    if (payload.length <= 1) { // Only OP_END
+      buffer[magicIdx + offH_idx] = 0x00;
+      buffer[magicIdx + offL_idx] = 0x00;
+      return; 
+    }
+    
+    // Safety Check: Absolute buffer overflow prevention
+    if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE - FLASH OVERFLOW");
+
+    buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
+    buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
+    
+    // Write payload bytes
+    let writePtr = magicIdx + currentOffset;
+    for(let b of payload) {
+        buffer[writePtr++] = b;
+    }
+    
+    currentOffset += payload.length;
+  }
+
+  inject(payloadData.c1, 4, 5);
+  inject(payloadData.c2, 6, 7);
+  inject(payloadData.c3, 8, 9);
+  
+  return buffer;
+}
+
+document.getElementById('burnBtn').addEventListener('click', async () => {
+  const hw = document.getElementById('hwModel').value;
+  try {
+    if (!navigator.usb) throw new Error("WEBUSB NOT SUPPORTED (USE CHROME/EDGE)");
+    
+    logMsg("COMPILING...");
+    const payloads = {
+      c1: compileDucky(document.getElementById('c1').value),
+      c2: compileDucky(document.getElementById('c2').value),
+      c3: compileDucky(document.getElementById('c3').value)
+    };
+    
+    logMsg("FETCHING TEMPLATE: " + hw);
+    const resp = await fetch(hw);
+    if (!resp.ok) throw new Error("TEMPLATE MISSING");
+    const hexText = await resp.text();
+    
+    const firmBuffer = patchHex(hexText, payloads);
+    
+    logMsg("SEARCHING FOR DIGISPARK... (PLUG IN NOW)");
+    const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
+    
+    const client = new Micronucleus(device);
+    logMsg("FLASHING...", 'warn');
+    await client.upload(firmBuffer);
+    logMsg("COMPLETE. DISCONNECT.", 'success');
+    
+  } catch (e) {
+    logMsg("ERROR: " + e.message, 'error');
+  }
+});
+</script>
+</body>
+</html>
