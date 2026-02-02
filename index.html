@@ -499,35 +499,53 @@ document.getElementById('customHex').addEventListener('change', async (e) => {
   }
 });
 
-// 2. Build Status Checker
-async function checkBuildStatus(user, repo) {
-  try {
-    const api = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=1`;
-    logMsg(`CHECKING FACTORY STATUS...`, 'warn');
-    const resp = await fetch(api);
-    if (resp.status === 403) {
-      logMsg("API LIMIT REACHED. CANNOT CHECK STATUS.", 'error');
-      return;
-    }
-    if (!resp.ok) return;
-    
-    const data = await resp.json();
-    if (data.workflow_runs && data.workflow_runs.length > 0) {
-      const run = data.workflow_runs[0];
-      if (run.status === 'in_progress' || run.status === 'queued') {
-        logMsg(`FACTORY BUSY: ${run.name} IS ${run.status.toUpperCase()}...`, 'warn');
-      } else if (run.status === 'completed' && run.conclusion === 'success') {
-        logMsg(`FACTORY FINISHED RECENTLY. TRY RELOADING PAGE.`, 'success');
-      } else {
-         logMsg(`LAST BUILD FAILED. CHECK GITHUB ACTIONS.`, 'error');
+// 2. Factory Radar (The Progress Monitor)
+async function monitorFactory(user, repo) {
+  let attempts = 0;
+  const maxAttempts = 24; // 2 minutes (24 * 5s)
+  
+  while (attempts < maxAttempts) {
+    try {
+      const api = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=1`;
+      const resp = await fetch(api);
+      
+      if (resp.status === 403) {
+        logMsg("RADAR JAMMED (API RATE LIMIT). WAIT BLINDLY...", 'error');
+        await new Promise(r => setTimeout(r, 10000));
+        attempts++;
+        continue;
       }
+      
+      const data = await resp.json();
+      if (data.workflow_runs && data.workflow_runs.length > 0) {
+        const run = data.workflow_runs[0];
+        
+        if (run.status === 'queued') {
+          logMsg(`FACTORY: JOB QUEUED [${run.name}]...`, 'warn');
+        } else if (run.status === 'in_progress') {
+          logMsg(`FACTORY: FORGING AMMO [${run.name}]...`, 'warn');
+        } else if (run.status === 'completed' && run.conclusion === 'success') {
+          logMsg(`FACTORY: SHIPMENT CONFIRMED. RE-ACQUIRING TARGET...`, 'success');
+          return true; // Success! Break loop and retry fetch
+        } else if (run.status === 'completed' && run.conclusion === 'failure') {
+          logMsg(`FACTORY: BUILD FAILED. ABORTING.`, 'error');
+          return false;
+        }
+      }
+    } catch (e) {
+      console.log("Radar glitch", e);
     }
-  } catch (e) {
-    console.log("Telemetry failed", e);
+    
+    // Wait 5 seconds before next ping
+    await new Promise(r => setTimeout(r, 5000));
+    attempts++;
   }
+  
+  logMsg("RADAR TIMEOUT. FACTORY UNRESPONSIVE.", 'error');
+  return false;
 }
 
-// 3. Remote Fetcher
+// 3. Remote Fetcher with Radar Integration
 async function fetchTemplate(filename) {
   // A. Check for Manual Override
   if (customHexData) {
@@ -535,32 +553,23 @@ async function fetchTemplate(filename) {
     return customHexData;
   }
 
-  const url = new URL(filename, document.baseURI).href;
-  
-  // CACHE BUSTER: Force new fetch
   const cacheBust = "?t=" + new Date().getTime();
+  const firmPath = `firmware/${filename}${cacheBust}`;
 
   try {
-    // UPDATED: Check firmware/ subdirectory first (Standard Production Path)
-    const firmPath = `firmware/${filename}${cacheBust}`;
+    // Try Bunker First
     logMsg(`CHECKING BUNKER: ${firmPath}`, 'warn');
     let resp = await fetch(firmPath);
-    if (resp.ok) return await resp.text();
-    
-    // Fallback to local (if running locally or old path)
-    logMsg("BUNKER EMPTY. CHECKING LOCAL...", 'warn');
-    resp = await fetch(filename + cacheBust);
     if (resp.ok) return await resp.text();
     
     throw new Error(resp.status);
 
   } catch (e) {
-    logMsg(`LOCAL FETCH FAILED. TRYING REMOTE RECOVERY...`, 'warn');
+    logMsg(`BUNKER EMPTY (${e.message}). SCANNING FACTORY...`, 'warn');
     
-    // Auto-detect User/Repo from URL if hosted on GitHub Pages
+    // Auto-detect User/Repo
     let user = 'hereliesaz';
     let repo = 'BadUSB-Roulette';
-    
     const hostname = window.location.hostname;
     const pathname = window.location.pathname;
     if (hostname.includes('github.io')) {
@@ -568,15 +577,17 @@ async function fetchTemplate(filename) {
        repo = pathname.split('/')[1] || repo;
     }
 
-    await checkBuildStatus(user, repo);
-
-    // Try Remote Fallback
-    const remoteUrl = `https://${user}.github.io/${repo}/firmware/${filename}${cacheBust}`;
-    logMsg("TRYING REMOTE BUNKER: " + remoteUrl);
+    // ENGAGE RADAR
+    const factorySuccess = await monitorFactory(user, repo);
     
-    let resp = await fetch(remoteUrl);
-    if (!resp.ok) throw new Error(`REMOTE FAILED: ${resp.status}`);
-    return await resp.text();
+    if (factorySuccess) {
+      // Retry Fetch
+      logMsg("RETRYING BUNKER ACCESS...", 'warn');
+      let resp = await fetch(firmPath);
+      if (resp.ok) return await resp.text();
+    }
+    
+    throw new Error("UNABLE TO ACQUIRE FIRMWARE");
   }
 }
 
