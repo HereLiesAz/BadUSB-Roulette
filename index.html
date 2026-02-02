@@ -525,7 +525,7 @@ async function monitorFactory(user, repo) {
         } else if (run.status === 'in_progress') {
           logMsg(`FACTORY: FORGING AMMO [${run.name}]...`, 'warn');
         } else if (run.status === 'completed' && run.conclusion === 'success') {
-          logMsg(`FACTORY: SHIPMENT CONFIRMED. RE-ACQUIRING TARGET...`, 'success');
+          logMsg(`FACTORY: SHIPMENT CONFIRMED.`, 'success');
           return true; // Success! Break loop and retry fetch
         } else if (run.status === 'completed' && run.conclusion === 'failure') {
           logMsg(`FACTORY: BUILD FAILED. ABORTING.`, 'error');
@@ -545,7 +545,7 @@ async function monitorFactory(user, repo) {
   return false;
 }
 
-// 3. Remote Fetcher with Radar Integration
+// 3. Remote Fetcher with Radar Integration + DELIVERY LOOP
 async function fetchTemplate(filename) {
   // A. Check for Manual Override
   if (customHexData) {
@@ -553,8 +553,8 @@ async function fetchTemplate(filename) {
     return customHexData;
   }
 
-  const cacheBust = "?t=" + new Date().getTime();
-  const firmPath = `firmware/${filename}${cacheBust}`;
+  const getCacheBust = () => "?t=" + new Date().getTime();
+  let firmPath = `firmware/${filename}${getCacheBust()}`;
 
   try {
     // Try Bunker First
@@ -581,13 +581,23 @@ async function fetchTemplate(filename) {
     const factorySuccess = await monitorFactory(user, repo);
     
     if (factorySuccess) {
-      // Retry Fetch
-      logMsg("RETRYING BUNKER ACCESS...", 'warn');
-      let resp = await fetch(firmPath);
-      if (resp.ok) return await resp.text();
+      logMsg("FACTORY SAYS DONE. WAITING FOR DELIVERY TRUCK (CDN)...", 'warn');
+      
+      // DELIVERY LOOP: Poll for CDN propagation (Max 90 seconds)
+      for(let i=0; i<18; i++) {
+         await new Promise(r => setTimeout(r, 5000));
+         const currentPath = `firmware/${filename}${getCacheBust()}`;
+         
+         logMsg(`CHECKING LOADING DOCK... (${i+1}/18)`, 'warn');
+         let resp = await fetch(currentPath);
+         if (resp.ok) {
+           logMsg("PACKAGE SECURED.", 'success');
+           return await resp.text();
+         }
+      }
     }
     
-    throw new Error("UNABLE TO ACQUIRE FIRMWARE");
+    throw new Error("UNABLE TO ACQUIRE FIRMWARE AFTER WAIT");
   }
 }
 
