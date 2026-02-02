@@ -346,6 +346,14 @@ const ASCII_MAP = {
   '5':0x22,'6':0x23,'7':0x24,'8':0x25,'9':0x26,'0':0x27,' ':0x2C
 };
 
+// MODIFIER BITMASKS (For DigiKeyboard.sendKeyStroke)
+const MOD_BITMASKS = {
+  'CTRL': 0x01, 'CONTROL': 0x01,
+  'SHIFT': 0x02,
+  'ALT': 0x04,
+  'GUI': 0x08, 'WINDOWS': 0x08, 'COMMAND': 0x08
+};
+
 function compileDucky(script) {
   const bytes = [];
   const lines = script.split('\n');
@@ -355,21 +363,35 @@ function compileDucky(script) {
     const parts = line.split(' ');
     const cmd = parts[0].toUpperCase();
     const args = parts.slice(1).join(' ');
+    
+    // 1. DELAY
     if (cmd === 'DELAY') {
       const ms = parseInt(args);
       bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
-    } else if (cmd === 'STRING') {
+    } 
+    // 2. STRING
+    else if (cmd === 'STRING') {
       for (let i = 0; i < args.length; i += 255) {
         const chunk = args.substring(i, Math.min(i + 255, args.length));
         bytes.push(0x03, chunk.length); 
         for (let c = 0; c < chunk.length; c++) bytes.push(chunk.charCodeAt(c));
       }
-    } else if (cmd === 'GUI' || cmd === 'WINDOWS' || cmd === 'COMMAND') {
-      let key = 0;
-      if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
-      else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
-      bytes.push(0x02, 0x08, key); 
-    } else if (KEY_MAP[cmd]) { 
+    } 
+    // 3. COMBINATION (MODIFIER + KEY)
+    else if (MOD_BITMASKS[cmd] && parts.length > 1) {
+      const modMask = MOD_BITMASKS[cmd];
+      const keyStr = parts[1];
+      let keyByte = 0;
+      
+      if (ASCII_MAP[keyStr.toLowerCase()]) keyByte = ASCII_MAP[keyStr.toLowerCase()];
+      else if (KEY_MAP[keyStr.toUpperCase()]) keyByte = KEY_MAP[keyStr.toUpperCase()];
+      
+      if (keyByte > 0) {
+        bytes.push(0x02, modMask, keyByte);
+      }
+    }
+    // 4. SINGLE KEY (Fallthrough)
+    else if (KEY_MAP[cmd]) { 
       bytes.push(0x02, 0x00, KEY_MAP[cmd]); 
     }
   }
@@ -421,6 +443,11 @@ function patchHex(hexString, payloadData) {
     
     if (payload.length <= 1) return;
     
+    // SAFETY CHECK: Ensure we don't breach the 1KB storage reserved in firmware
+    if (currentOffset + payload.length > 1024) {
+      throw new Error(`CHAMBER OVERFLOW: ${label} (Size: ${payload.length}) exceeds available storage.`);
+    }
+
     // Safety check relative to buffer
     if (magicIdx + currentOffset + payload.length >= fullBuffer.length) throw new Error("PAYLOAD TOO LARGE");
 
