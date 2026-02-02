@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [SURGEON]</title>
+  <title>BADUSB ROULETTE</title>
   <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
   <style>
     :root {
@@ -193,7 +193,7 @@
 
   <header>
     <h1>BadUSB Roulette</h1>
-    <div class="subtitle">/// DIAGNOSTIC MODE ACTIVE ///</div>
+    <div class="subtitle">/// UNIFIED PAYLOAD SYSTEM ///</div>
   </header>
 
   <div id="winWarning">
@@ -336,7 +336,6 @@ function compileDucky(script) {
 
 // --- HEX PATCHER (THE SURGEON) ---
 function patchHex(hexString, payloadData) {
-  // Convert HEX to Byte Buffer
   const buffer = new Uint8Array(8192).fill(0xFF); 
   const lines = hexString.split('\n');
   for (let line of lines) {
@@ -350,7 +349,6 @@ function patchHex(hexString, payloadData) {
     }
   }
 
-  // Find the Brain
   let magicIdx = -1;
   for (let i = 0; i < buffer.length - 4; i++) {
     if (buffer[i]===0xCA && buffer[i+1]===0xFE && buffer[i+2]===0xBA && buffer[i+3]===0xBE) {
@@ -364,7 +362,6 @@ function patchHex(hexString, payloadData) {
   let currentOffset = 10;
   
   function inject(payload, label, offH_idx, offL_idx) {
-    // Write Offset Pointers (relative to magic header)
     buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     
@@ -377,7 +374,6 @@ function patchHex(hexString, payloadData) {
 
     logMsg(`[SURGERY] Injecting ${label}: ${payload.length} bytes at offset +${currentOffset}`, 'debug');
     
-    // Write the actual bytes
     let writePtr = magicIdx + currentOffset;
     for(let b of payload) {
         buffer[writePtr++] = b;
@@ -422,79 +418,34 @@ document.getElementById('customHex').addEventListener('change', async (e) => {
   }
 });
 
-async function checkGitHubStatus(user, repo) {
-  const url = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=30`;
-  logMsg(`[API] GET ${url}`, 'debug');
-  
-  try {
-    const resp = await fetch(url);
-    if (resp.status === 403) return { status: 'RATE_LIMITED' };
-    if (!resp.ok) return { status: 'ERROR', code: resp.status };
-    
-    const data = await resp.json();
-    if (!data.workflow_runs) return { status: 'NO_RUNS' };
-
-    const factoryRun = data.workflow_runs.find(run => run.name.includes("Factory"));
-    
-    if (factoryRun) {
-        logMsg(`[API] Factory Run Found: #${factoryRun.id} (${factoryRun.status}/${factoryRun.conclusion})`, 'debug');
-        return { status: factoryRun.status, conclusion: factoryRun.conclusion };
-    }
-    
-    logMsg(`[API] Factory Run Not Found in last 30 jobs.`, 'debug');
-    return { status: 'NOT_FOUND' };
-    
-  } catch (e) {
-    logMsg(`[API] Error: ${e.message}`, 'error');
-    return { status: 'EXCEPTION' };
-  }
-}
-
-async function fetchWithRetry(url) {
-  const MAX_RETRIES = 24; // 2 minutes
-  
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    const targetUrl = `${url}?t=${Date.now()}`;
-    logMsg(`[HTTP] GET ${targetUrl}`, 'debug');
-    
-    try {
-      const resp = await fetch(targetUrl);
-      logMsg(`[HTTP] Response: ${resp.status} ${resp.statusText}`, resp.ok ? 'success' : 'debug');
-      
-      if (resp.ok) return await resp.text();
-      
-      if (resp.status === 404) {
-        logMsg(`[WAIT] 404 Not Found. Retry ${i+1}/${MAX_RETRIES} in 5s...`, 'warn');
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
-      }
-      throw new Error(`HTTP ${resp.status}`);
-      
-    } catch (e) {
-      logMsg(`[NET] Error: ${e.message}`, 'error');
-      await new Promise(r => setTimeout(r, 5000));
-    }
-  }
-  throw new Error("TIMEOUT: File not found after 2 minutes");
-}
-
 async function acquireFirmware(filename) {
   if (customHexData) return customHexData;
 
-  let user = 'hereliesaz';
-  let repo = 'BadUSB-Roulette';
-  if (window.location.hostname.includes('github.io')) {
-     user = window.location.hostname.split('.')[0];
-     repo = window.location.pathname.split('/')[1] || repo;
-  }
-  logMsg(`[CFG] Repo: ${user}/${repo}`, 'debug');
+  // New Structure: firmware/filename.hex is relative to index.html
+  const firmPath = `firmware/${filename}`;
+  
+  // Cache Buster (Critical for Commit-Back Architecture)
+  const targetUrl = `${firmPath}?t=${Date.now()}`;
+  
+  logMsg(`[ACQ] GET ${targetUrl}`, 'debug');
 
-  const firmwareUrl = `https://${user}.github.io/${repo}/firmware/${filename}`;
-  
-  await checkGitHubStatus(user, repo);
-  
-  logMsg(`[ACQ] Attempting to acquire: ${filename}`, 'normal');
-  return await fetchWithRetry(firmwareUrl);
+  try {
+    const resp = await fetch(targetUrl);
+    
+    if (resp.status === 404) {
+      logMsg(`[ERR] 404 Not Found.`, 'error');
+      logMsg(`[HINT] Ensure the 'Deploy System (Unified)' workflow has finished running.`, 'warn');
+      throw new Error("Firmware file missing from deployment.");
+    }
+    
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    
+    logMsg(`[ACQ] Success.`, 'success');
+    return await resp.text();
+    
+  } catch (e) {
+    throw new Error(`Download Failed: ${e.message}`);
+  }
 }
 
 document.getElementById('burnBtn').addEventListener('click', async () => {
