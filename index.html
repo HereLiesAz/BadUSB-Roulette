@@ -538,11 +538,21 @@ async function fetchTemplate(filename) {
   const url = new URL(filename, document.baseURI).href;
   
   try {
-    let resp = await fetch(filename);
+    // UPDATED: Check firmware/ subdirectory first (Standard Production Path)
+    const firmPath = `firmware/${filename}`;
+    logMsg(`CHECKING BUNKER: ${firmPath}`, 'warn');
+    let resp = await fetch(firmPath);
     if (resp.ok) return await resp.text();
+    
+    // Fallback to local (if running locally or old path)
+    logMsg("BUNKER EMPTY. CHECKING LOCAL...", 'warn');
+    resp = await fetch(filename);
+    if (resp.ok) return await resp.text();
+    
     throw new Error(resp.status);
+
   } catch (e) {
-    logMsg(`LOCAL FETCH FAILED (${e.message})...`, 'warn');
+    logMsg(`LOCAL FETCH FAILED. TRYING REMOTE RECOVERY...`, 'warn');
     
     // Auto-detect User/Repo from URL if hosted on GitHub Pages
     let user = 'hereliesaz';
@@ -559,9 +569,9 @@ async function fetchTemplate(filename) {
     // Check status API before failing
     await checkBuildStatus(user, repo);
 
-    // Try Remote Fallback
-    const remoteUrl = `https://${user}.github.io/${repo}/${filename}`;
-    logMsg("TRYING REMOTE: " + remoteUrl);
+    // Try Remote Fallback (NEW PATH)
+    const remoteUrl = `https://${user}.github.io/${repo}/firmware/${filename}`;
+    logMsg("TRYING REMOTE BUNKER: " + remoteUrl);
     
     let resp = await fetch(remoteUrl);
     if (!resp.ok) throw new Error(`REMOTE FAILED: ${resp.status}`);

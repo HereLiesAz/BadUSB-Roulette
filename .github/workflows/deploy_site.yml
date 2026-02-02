@@ -1,0 +1,27 @@
+name: Interface (Web)
+
+on:
+  push:
+    paths:
+      - 'index.html'
+      - '.github/workflows/deploy_site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Deploy Interface
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          exclude_assets: '**.ino,**.h,**.yml,README.md'
+          keep_files: true # CRITICAL: Don't delete firmware
+          commit_message: "Update: Web Interface"
