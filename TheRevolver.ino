@@ -41,17 +41,18 @@ bool has_payload(byte chamber) {
   // Chamber 1 -> Index 6
   // Chamber 2 -> Index 8
   uint16_t offset_loc = 4 + (chamber * 2);
-  
+
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
   uint16_t ptr = (off_h << 8) | off_l;
-  
+
   return (ptr != 0);
 }
 
 void setup() {
   // 1. PANIC BLINK (Hardware Agnostic)
-  // We don't care what the config says. Set BOTH to output and flash them.
+  // We don't care what the config says.
+  // Set BOTH to output and flash them.
   // This proves the code is running immediately on power-up.
   pinMode(0, OUTPUT);
   pinMode(1, OUTPUT);
@@ -89,7 +90,8 @@ void setup() {
   if (!has_payload(mode)) {
     while(1) {
       // SOS Pattern on both pins
-      digitalWrite(0, HIGH); digitalWrite(1, HIGH);
+      digitalWrite(0, HIGH);
+      digitalWrite(1, HIGH);
       DigiKeyboard.delay(100);
       digitalWrite(0, LOW); digitalWrite(1, LOW);
       DigiKeyboard.delay(100);
@@ -121,13 +123,13 @@ void setup() {
 
   // 6. FIRE PHASE
   signal_fire();
-  
+
   // EXECUTE PAYLOAD
   uint16_t offset_loc = 4 + (mode * 2);
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
   uint16_t payload_addr = (off_h << 8) | off_l;
-  
+
   if (payload_addr > 0 && payload_addr < 1024) {
      run_vm(payload_addr);
   }
@@ -145,7 +147,7 @@ void loop() {}
 void run_vm(uint16_t ptr) {
   while(true) {
     uint8_t opcode = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-    
+
     if (opcode == OP_END) break;
     
     else if (opcode == OP_DELAY) {
