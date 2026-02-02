@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [DEBUG]</title>
+  <title>BADUSB ROULETTE [DIAGNOSTIC]</title>
   <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
   <style>
     :root {
@@ -18,7 +18,7 @@
     body {
       background-color: var(--bg-color);
       color: var(--term-green);
-      font-family: 'Consolas', 'Monaco', monospace; /* Changed to generic mono for readability */
+      font-family: 'Consolas', 'Monaco', monospace;
       margin: 0;
       padding: 0;
       display: flex;
@@ -174,13 +174,13 @@
       color: #666;
     }
     #log {
-      height: 300px; /* Taller for debug logs */
+      height: 300px;
       overflow-y: scroll;
       padding: 10px;
       font-family: 'Consolas', monospace;
       font-size: 0.85rem;
       color: #aaa;
-      white-space: pre-wrap; /* Preserve formatting */
+      white-space: pre-wrap;
     }
     .log-line { border-bottom: 1px solid #111; padding: 2px 0; }
     .log-err { color: var(--alert-red); }
@@ -407,29 +407,31 @@ document.getElementById('customHex').addEventListener('change', async (e) => {
   }
 });
 
+// UPDATED: Filter for "Factory (Firmware)" only
 async function checkGitHubStatus(user, repo) {
-  const url = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=1`;
+  // Check last 10 runs to find the Factory
+  const url = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=10`;
   logMsg(`[API] GET ${url}`, 'debug');
   
   try {
     const resp = await fetch(url);
-    logMsg(`[API] Status: ${resp.status}`, 'debug');
-    
     if (resp.status === 403) return { status: 'RATE_LIMITED' };
     if (!resp.ok) return { status: 'ERROR', code: resp.status };
     
     const data = await resp.json();
-    if (!data.workflow_runs || data.workflow_runs.length === 0) return { status: 'NO_RUNS' };
+    if (!data.workflow_runs) return { status: 'NO_RUNS' };
+
+    // Filter for the Factory
+    const factoryRun = data.workflow_runs.find(run => run.name.includes("Factory"));
     
-    const run = data.workflow_runs[0];
-    logMsg(`[API] Run ID: ${run.id} | Name: ${run.name}`, 'debug');
-    logMsg(`[API] Status: ${run.status} | Conclusion: ${run.conclusion}`, 'debug');
+    if (factoryRun) {
+        logMsg(`[API] Factory Run Found: #${factoryRun.id} (${factoryRun.status}/${factoryRun.conclusion})`, 'debug');
+        return { status: factoryRun.status, conclusion: factoryRun.conclusion };
+    }
     
-    return { 
-      status: run.status, 
-      conclusion: run.conclusion,
-      name: run.name
-    };
+    logMsg(`[API] Factory Run Not Found in last 10 jobs.`, 'debug');
+    return { status: 'NOT_FOUND' };
+    
   } catch (e) {
     logMsg(`[API] Error: ${e.message}`, 'error');
     return { status: 'EXCEPTION' };
@@ -440,7 +442,6 @@ async function fetchWithRetry(url) {
   const MAX_RETRIES = 24; // 2 minutes
   
   for (let i = 0; i < MAX_RETRIES; i++) {
-    // Add timestamp to prevent caching
     const targetUrl = `${url}?t=${Date.now()}`;
     logMsg(`[HTTP] GET ${targetUrl}`, 'debug');
     
@@ -450,19 +451,15 @@ async function fetchWithRetry(url) {
       
       if (resp.ok) return await resp.text();
       
-      // If 404, wait and retry
       if (resp.status === 404) {
         logMsg(`[WAIT] 404 Not Found. Retry ${i+1}/${MAX_RETRIES} in 5s...`, 'warn');
         await new Promise(r => setTimeout(r, 5000));
         continue;
       }
-      
-      // Other errors are fatal
       throw new Error(`HTTP ${resp.status}`);
       
     } catch (e) {
       logMsg(`[NET] Error: ${e.message}`, 'error');
-      // If network error, wait and retry
       await new Promise(r => setTimeout(r, 5000));
     }
   }
@@ -470,10 +467,8 @@ async function fetchWithRetry(url) {
 }
 
 async function acquireFirmware(filename) {
-  // 1. Manual Override
   if (customHexData) return customHexData;
 
-  // 2. Identify Repo
   let user = 'hereliesaz';
   let repo = 'BadUSB-Roulette';
   if (window.location.hostname.includes('github.io')) {
@@ -482,14 +477,10 @@ async function acquireFirmware(filename) {
   }
   logMsg(`[CFG] Repo: ${user}/${repo}`, 'debug');
 
-  // 3. Construct URL
-  // Try firmware/ subdirectory first
   const firmwareUrl = `https://${user}.github.io/${repo}/firmware/${filename}`;
   
-  // 4. Check Factory Status (Just for info)
   await checkGitHubStatus(user, repo);
-
-  // 5. Start Polling
+  
   logMsg(`[ACQ] Attempting to acquire: ${filename}`, 'normal');
   return await fetchWithRetry(firmwareUrl);
 }
@@ -501,7 +492,6 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
     
     logMsg("--- STARTING SEQUENCE ---");
     
-    // 1. Compile
     const payloads = {
       c1: compileDucky(document.getElementById('c1').value),
       c2: compileDucky(document.getElementById('c2').value),
@@ -509,15 +499,12 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
     };
     logMsg("[CMP] Compilation Complete", 'success');
     
-    // 2. Fetch
     const hexText = await acquireFirmware(hw);
     logMsg(`[HEX] Firmware loaded (${hexText.length} bytes)`, 'success');
     
-    // 3. Patch
     const firmBuffer = patchHex(hexText, payloads);
     logMsg("[PAT] Firmware Patched", 'success');
     
-    // 4. Flash
     logMsg("[USB] Requesting Device...", 'warn');
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
     const client = new Micronucleus(device);
