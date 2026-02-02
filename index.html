@@ -264,7 +264,6 @@
 
 <script>
 // --- EMBEDDED TEMPLATES (ESCAPE POD) ---
-// These ensure the generator works even if the fetch fails.
 const TEMPLATE_CFG = `
 #ifndef ROULETTE_CFG_H
 #define ROULETTE_CFG_H
@@ -330,11 +329,10 @@ void signal_done();
 // ==========================================
 void set_led(uint8_t state) {
   #if DUAL_LED_MODE == 1
-    // Dual Mode: Respect specific Green/Red pins
-    // (Managed by specific signal functions below)
+    // Dual Mode Failsafe: Use RED PIN 1 for generic blinks if strictly requested
+    digitalWrite(PIN_RED, state);
   #else
     // Single/Universal Mode: Blast BOTH pins.
-    // Covers Model A (Pin 1) and Model B (Pin 0).
     digitalWrite(0, state);
     digitalWrite(1, state);
   #endif
@@ -758,9 +756,19 @@ document.getElementById('genInoBtn').addEventListener('click', () => {
     inoText = inoText.replace('#include "roulette_cfg.h"', "// --- CONFIG INJECTED BY GENERATOR ---\n" + cfgText + "\n// -----------------------------------");
     
     // 3. Build Byte Array
-    const p1 = compileDucky(document.getElementById('c1').value);
-    const p2 = compileDucky(document.getElementById('c2').value);
-    const p3 = compileDucky(document.getElementById('c3').value);
+    let t1 = document.getElementById('c1').value.trim();
+    let t2 = document.getElementById('c2').value.trim();
+    let t3 = document.getElementById('c3').value.trim();
+    
+    // SAFETY INJECTOR: If all are empty, inject a default blink script to prevent logic bricking
+    if(t1 === "" && t2 === "" && t3 === "") {
+        t1 = "DELAY 500\\nREPEAT 5\\nDELAY 100"; 
+        logMsg("[WARN] No payloads detected. Injecting safety blink.", 'error');
+    }
+    
+    const p1 = compileDucky(t1);
+    const p2 = compileDucky(t2);
+    const p3 = compileDucky(t3);
     
     const mem = new Uint8Array(1024).fill(0);
     // Header
