@@ -1,4 +1,4 @@
-# BadUSB-Roulette (Web-Flasher Edition)
+# BadUSB-Roulette
 
 The BadUSB is a revolver. 
 The barrel holds three bullets.
