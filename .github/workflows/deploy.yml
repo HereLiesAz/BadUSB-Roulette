@@ -21,9 +21,10 @@ jobs:
         uses: arduino/setup-arduino-cli@v1
 
       - name: Install Core
+        # FIXED: Switched to GitHub Raw URL because digistump.com is dead.
         run: |
           arduino-cli config init
-          arduino-cli config add board_manager.additional_urls http://digistump.com/package_digistump_index.json
+          arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/digistump/arduino-boards-index/master/package_digistump_index.json
           arduino-cli core update-index
           arduino-cli core install digistump:avr
 
