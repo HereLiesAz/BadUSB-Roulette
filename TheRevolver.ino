@@ -7,7 +7,7 @@
    The Web Interface injects data into this block.
  */
 
-#include <EEPROM.h>
+#include <avr/eeprom.h> // FIXED: Switched to native AVR library
 #include "DigiKeyboard.h"
 #include "config.h"
 
@@ -44,11 +44,13 @@ void setup() {
   #endif
 
   // 2. ROTATION LOGIC (Entropy)
-  byte mode = EEPROM.read(0);
+  // Read -> Calculate Next -> Write Immediately
+  // FIXED: Using native AVR EEPROM functions
+  byte mode = eeprom_read_byte((const uint8_t*)0);
   if (mode >= TOTAL_CHAMBERS) mode = 0;
   
   byte nextMode = (mode + 1) % TOTAL_CHAMBERS;
-  EEPROM.write(0, nextMode);
+  eeprom_update_byte((uint8_t*)0, nextMode);
 
   // 3. IDENTIFICATION PHASE
   DigiKeyboard.delay(1000); 
