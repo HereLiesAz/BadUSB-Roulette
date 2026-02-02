@@ -537,16 +537,19 @@ async function fetchTemplate(filename) {
 
   const url = new URL(filename, document.baseURI).href;
   
+  // CACHE BUSTER: Force new fetch
+  const cacheBust = "?t=" + new Date().getTime();
+
   try {
     // UPDATED: Check firmware/ subdirectory first (Standard Production Path)
-    const firmPath = `firmware/${filename}`;
+    const firmPath = `firmware/${filename}${cacheBust}`;
     logMsg(`CHECKING BUNKER: ${firmPath}`, 'warn');
     let resp = await fetch(firmPath);
     if (resp.ok) return await resp.text();
     
     // Fallback to local (if running locally or old path)
     logMsg("BUNKER EMPTY. CHECKING LOCAL...", 'warn');
-    resp = await fetch(filename);
+    resp = await fetch(filename + cacheBust);
     if (resp.ok) return await resp.text();
     
     throw new Error(resp.status);
@@ -558,7 +561,6 @@ async function fetchTemplate(filename) {
     let user = 'hereliesaz';
     let repo = 'BadUSB-Roulette';
     
-    // Parse github.io URL: user.github.io/repo
     const hostname = window.location.hostname;
     const pathname = window.location.pathname;
     if (hostname.includes('github.io')) {
@@ -566,11 +568,10 @@ async function fetchTemplate(filename) {
        repo = pathname.split('/')[1] || repo;
     }
 
-    // Check status API before failing
     await checkBuildStatus(user, repo);
 
-    // Try Remote Fallback (NEW PATH)
-    const remoteUrl = `https://${user}.github.io/${repo}/firmware/${filename}`;
+    // Try Remote Fallback
+    const remoteUrl = `https://${user}.github.io/${repo}/firmware/${filename}${cacheBust}`;
     logMsg("TRYING REMOTE BUNKER: " + remoteUrl);
     
     let resp = await fetch(remoteUrl);
@@ -591,7 +592,6 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
       c3: compileDucky(document.getElementById('c3').value)
     };
     
-    // UPDATED: Use the robust fetcher
     const hexText = await fetchTemplate(hw);
     
     const firmBuffer = patchHex(hexText, payloads);
