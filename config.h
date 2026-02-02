@@ -1,21 +1,13 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// --- HARDWARE SELECTION ---
-// This file is manipulated by the GitHub Action to generate
-// two distinct firmware templates (Single and Dual).
-// The user selects the correct one via the Web Interface.
+// --- BADUSB ROULETTE CONFIG ---
+// 0 = Single LED (Model A / Rev 2)
+// 1 = Dual LED (Model B / Rev 1)
+// Note: This value is automatically patched by the build_firmware.yml workflow.
+
 #define DUAL_LED_MODE 0 
 
-// --- PINS ---
-// Digispark Rev 2 (Model A) LED is Pin 1
-// Digispark Rev 1 (Model B) LED is Pin 0
-#define PIN_SINGLE 1
-#define PIN_GREEN  0
-#define PIN_RED    1
-
-// --- TIMINGS ---
-#define TOTAL_CHAMBERS 3
-#define SAFE_WINDOW 3000
+// FORCE REBUILD TRIGGER: [2026-02-01_2100]
 
 #endif
