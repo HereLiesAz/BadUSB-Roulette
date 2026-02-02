@@ -25,6 +25,13 @@ Which, I guess, makes it normal Roulette... the kind we all necessarily play whe
 4. **Click "FLASH FIRMWARE"**.
 5. The site will compile the scripts, inject them into the hex file, and burn it to the device.
 
+### ⚠️ IMPORTANT: Windows Users
+WebUSB requires the **WinUSB** driver. The standard DigiSpark driver (`libusb-win32`) will **NOT** work with the website.
+1. Download **Zadig**.
+2. Plug in the DigiSpark.
+3. In Zadig, select `Digispark Bootloader` (Options -> List All Devices).
+4. Replace the driver with **WinUSB**.
+
 ### How to use it:
 1. Plug the device into a target.
 2. It blinks to tell you which chamber is active (1, 2, or 3).
