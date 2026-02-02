@@ -96,8 +96,12 @@ jobs:
         run: |
           mkdir -p public
           cp index.html public/index.html
-          # Copy the firmware folder (containing .hex AND .js) to the deploy folder
+          # Copy the firmware folder (containing .hex AND .js)
           cp -r firmware public/firmware
+          # EXPOSE SOURCE CODE FOR GENERATOR
+          cp TheRevolver.ino public/firmware/TheRevolver.ino
+          cp roulette_cfg.h public/firmware/roulette_cfg.h
+          
           touch public/.nojekyll
 
       - name: Deploy to GitHub Pages
