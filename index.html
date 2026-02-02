@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [UNIFIED]</title>
-  <script src="https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js"></script>
+  <title>BADUSB ROULETTE [PATCHED]</title>
+  
+  <script type="module">
+    import Micronucleus from 'https://cdn.jsdelivr.net/gh/skandhurkat/micronucleus-web@master/lib/micronucleus.js';
+    window.Micronucleus = Micronucleus;
+    console.log("Micronucleus Library Loaded");
+  </script>
+
   <style>
     :root {
       --bg-color: #050505;
@@ -271,12 +277,15 @@ function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
   const line = document.createElement('div');
   line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : type === 'debug' ? 'log-debug' : '');
+  
   const timestamp = new Date().toLocaleTimeString('en-US',{hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 3});
   line.innerText = `[${timestamp}] ${msg}`;
+  
   logEl.appendChild(line);
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+// --- DUCKYSCRIPT COMPILER ---
 const KEY_MAP = {
   'ENTER':0x28, 'ESC':0x29, 'BACKSPACE':0x2A, 'TAB':0x2B, 'SPACE':0x2C, 'MINUS':0x2D, 
   'EQUAL':0x2E, 'LEFT_BRACE':0x2F, 'RIGHT_BRACE':0x30, 'BACKSLASH':0x31, 'SEMICOLON':0x33, 
@@ -301,24 +310,29 @@ function compileDucky(script) {
   for (let line of lines) {
     line = line.trim();
     if (!line || line.startsWith("REM") || line.startsWith("//") || line.startsWith("#")) continue;
+    
     const parts = line.split(' ');
     const cmd = parts[0].toUpperCase();
     const args = parts.slice(1).join(' ');
+
     if (cmd === 'DELAY') {
       const ms = parseInt(args);
       bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
-    } else if (cmd === 'STRING') {
+    } 
+    else if (cmd === 'STRING') {
       for (let i = 0; i < args.length; i += 255) {
         const chunk = args.substring(i, Math.min(i + 255, args.length));
         bytes.push(0x03, chunk.length); 
         for (let c = 0; c < chunk.length; c++) bytes.push(chunk.charCodeAt(c));
       }
-    } else if (cmd === 'GUI' || cmd === 'WINDOWS' || cmd === 'COMMAND') {
+    }
+    else if (cmd === 'GUI' || cmd === 'WINDOWS' || cmd === 'COMMAND') {
       let key = 0;
       if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
       else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
       bytes.push(0x02, 0x08, key); 
-    } else if (KEY_MAP[cmd]) { 
+    }
+    else if (KEY_MAP[cmd]) { 
       bytes.push(0x02, 0x00, KEY_MAP[cmd]); 
     }
   }
@@ -326,6 +340,7 @@ function compileDucky(script) {
   return bytes;
 }
 
+// --- HEX PATCHER ---
 function patchHex(hexString, payloadData) {
   const buffer = new Uint8Array(8192).fill(0xFF); 
   const lines = hexString.split('\n');
@@ -339,6 +354,7 @@ function patchHex(hexString, payloadData) {
       for (let i = 0; i < len; i++) { buffer[addr + i] = parseInt(line.substr(9 + i * 2, 2), 16); }
     }
   }
+
   let magicIdx = -1;
   for (let i = 0; i < buffer.length - 4; i++) {
     if (buffer[i]===0xCA && buffer[i+1]===0xFE && buffer[i+2]===0xBA && buffer[i+3]===0xBE) {
@@ -346,17 +362,19 @@ function patchHex(hexString, payloadData) {
     }
   }
   if (magicIdx === -1) throw new Error("TEMPLATE INVALID: MAGIC HEADER NOT FOUND");
-  
+
   let currentOffset = 10;
   function inject(payload, offH_idx, offL_idx) {
-    buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
-    buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     if (payload.length <= 1) return; 
     if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE");
+
+    buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
+    buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     let writePtr = magicIdx + currentOffset;
     for(let b of payload) { buffer[writePtr++] = b; }
     currentOffset += payload.length;
   }
+
   inject(payloadData.c1, 4, 5);
   inject(payloadData.c2, 6, 7);
   inject(payloadData.c3, 8, 9);
@@ -380,7 +398,8 @@ function mutate(selector, targetId) {
   selector.selectedIndex = 0; 
 }
 
-// --- APP LOGIC ---
+// --- NETWORK OPS ---
+
 let customHexData = null;
 document.getElementById('customHex').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -396,17 +415,13 @@ async function acquireFirmware(filename) {
   const firmPath = `firmware/${filename}`;
   const targetUrl = `${firmPath}?t=${Date.now()}`;
   
-  // LOG THE EXACT PATH WE ARE TRYING
-  const fullPath = new URL(firmPath, document.baseURI).href;
-  logMsg(`[SYS] Current Page: ${document.baseURI}`, 'debug');
-  logMsg(`[ACQ] Fetching: ${fullPath}`, 'debug');
+  logMsg(`[ACQ] Fetching: ${new URL(firmPath, document.baseURI).href}`, 'debug');
 
   try {
     const resp = await fetch(targetUrl);
     if (resp.status === 404) {
       logMsg(`[ERR] 404 Not Found.`, 'error');
-      logMsg(`[HINT] 1. Did the 'Deploy System' action finish?`, 'warn');
-      logMsg(`[HINT] 2. Did the build fail? Check Actions tab.`, 'warn');
+      logMsg(`[HINT] Ensure the 'Deploy System (Unified)' workflow has finished running.`, 'warn');
       throw new Error("Firmware file missing from deployment.");
     }
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -421,6 +436,12 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
   const hw = document.getElementById('hwModel').value;
   try {
     if (!navigator.usb) throw new Error("WebUSB not supported");
+    
+    // STARTUP CHECK: Ensure Driver Loaded
+    if (typeof window.Micronucleus === 'undefined') {
+       throw new Error("Driver Failed to Load. Check Console/Network.");
+    }
+
     logMsg("--- STARTING SEQUENCE ---");
     
     const payloads = {
@@ -438,7 +459,9 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
     
     logMsg("[USB] Requesting Device...", 'warn');
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
-    const client = new Micronucleus(device);
+    
+    // USE MODULE EXPORT
+    const client = new window.Micronucleus(device);
     
     logMsg("[USB] Flashing...", 'warn');
     await client.upload(firmBuffer);
