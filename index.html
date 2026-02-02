@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [ROBUST]</title>
+  <title>BADUSB ROULETTE [OPTIMIZED]</title>
   
   <script src="firmware/micronucleus.js"></script>
 
@@ -175,7 +175,7 @@
     <h3>/// LINUX PERMISSION ERROR ///</h3>
     <strong>ACCESS DENIED:</strong> Your user does not have permission to access this USB device.
     <br>Run this command in your terminal to fix the udev rules, then <strong>unplug and replug</strong> the Digispark:
-    <div class="code-block">echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="16d0", ATTR{idProduct}=="0753", MODE="0666"' | sudo tee /etc/udev/rules.d/99-digispark.rules && sudo udevadm control --reload-rules && sudo udevadm trigger</div>
+    <div class="code-block">echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="16d0", ATTR{idProduct}=="0753", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/99-digispark.rules && sudo udevadm control --reload-rules && sudo udevadm trigger</div>
   </div>
 
   <div class="armory-controls">
@@ -438,7 +438,18 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
     const hexText = await acquireFirmware(hw);
     logMsg(`[HEX] Firmware loaded (${hexText.length} bytes)`, 'success');
     
-    const firmBuffer = patchHex(hexText, payloads);
+    // --- TRIM THE BUFFER TO 6KB (SAFETY CUT) ---
+    // ATtiny85 Flash = 8192 bytes. 
+    // Bootloader = ~1.5KB-2KB at the end.
+    // Safe user space = ~6KB (6144 bytes).
+    // The patchHex creates an 8KB buffer. We must slice it.
+    let firmBuffer = patchHex(hexText, payloads);
+    
+    if (firmBuffer.length > 6000) {
+        logMsg(`[OPT] Trimming firmware from ${firmBuffer.length} to 6000 bytes for ATtiny85 safety.`, 'warn');
+        firmBuffer = firmBuffer.slice(0, 6000); 
+    }
+    
     logMsg("[PAT] Firmware Patched Successfully", 'success');
     
     logMsg("[USB] Requesting Device...", 'warn');
