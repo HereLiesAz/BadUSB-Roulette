@@ -470,7 +470,7 @@ void run_vm(uint16_t ptr) {
         char c = (char)pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
         DigiKeyboard.print(c);
       }
-      if (opcode == OP_PRINTLN) DigiKeyboard.print("\n");
+      if (opcode == OP_PRINTLN) DigiKeyboard.print("\\n");
     }
     
     // Safety Break (End of Storage)
