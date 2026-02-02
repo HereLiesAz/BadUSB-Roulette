@@ -469,6 +469,27 @@ function patchHex(hexString, payloadData) {
   return buffer;
 }
 
+/* --- REMOTE FALLBACK LOGIC --- */
+async function fetchTemplate(filename) {
+  const url = new URL(filename, document.baseURI).href;
+  console.log("Fetching Local: " + url);
+  
+  try {
+    let resp = await fetch(filename);
+    if (resp.ok) return await resp.text();
+    throw new Error(resp.status);
+  } catch (e) {
+    logMsg(`LOCAL FETCH FAILED (${e.message})... TRYING REMOTE...`, 'warn');
+    // FALLBACK TO PRODUCTION REPO
+    const remoteUrl = `https://hereliesaz.github.io/BadUSB-Roulette/${filename}`;
+    logMsg("FETCHING REMOTE: " + remoteUrl);
+    
+    let resp = await fetch(remoteUrl);
+    if (!resp.ok) throw new Error(`REMOTE FAILED: ${resp.status}`);
+    return await resp.text();
+  }
+}
+
 document.getElementById('burnBtn').addEventListener('click', async () => {
   const hw = document.getElementById('hwModel').value;
   try {
@@ -481,16 +502,9 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
       c3: compileDucky(document.getElementById('c3').value)
     };
     
-    logMsg("FETCHING TEMPLATE: " + hw);
+    // UPDATED: Use the robust fetcher
+    const hexText = await fetchTemplate(hw);
     
-    // UPDATED: Show the full URL to debug Local vs Remote issues
-    const url = new URL(hw, document.baseURI).href;
-    console.log("Fetching: " + url);
-    
-    const resp = await fetch(hw);
-    if (!resp.ok) throw new Error(`TEMPLATE MISSING: ${url} (Status: ${resp.status})`);
-    
-    const hexText = await resp.text();
     const firmBuffer = patchHex(hexText, payloads);
     
     logMsg("SEARCHING FOR DIGISPARK... (PLUG IN NOW)");
