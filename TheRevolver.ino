@@ -3,12 +3,14 @@
    HARDWARE: ATtiny85 (Digispark)
    
    MODE SELECTION:
-   - SINGLE_LED_MODE: Uses the onboard LED. Flashes count, stays SOLID to arm.
+   - SINGLE_LED_MODE: Uses the onboard LED.
+     Flashes count, stays SOLID to arm.
    - DUAL_LED_MODE:   Uses two pins. Green flashes count, RED arms.
-*/
+ */
 
 #include <EEPROM.h>
 #include "DigiKeyboard.h"
+#include "config.h" // FIXED: Actually import the settings
 
 // --- IMPORT BULLETS ---
 #include "src/chamber-one/payload.h"
@@ -18,22 +20,8 @@
 // ==========================================
 //      CONFIGURATION ZONE
 // ==========================================
-
-// UNCOMMENT THIS LINE if you have Red/Green LEDs wired up. 
-// LEAVE COMMENTED to use the default onboard LED.
-// #define DUAL_LED_MODE 
-
-#define TOTAL_MODES 3
-#define SAFE_WINDOW 3000 // Time (ms) to decide before firing
-#define MEM_ADDR 0
-
-// --- PIN DEFINITIONS ---
-#ifdef DUAL_LED_MODE
-  #define PIN_GREEN 0  // Adjust based on your wiring
-  #define PIN_RED   1
-#else
-  #define PIN_MAIN  1  // Default onboard LED (Rev 2 Model A)
-#endif
+// Settings are now handled strictly in config.h 
+// or overridden by the GitHub Action via sed.
 
 // ==========================================
 //      LOGIC ENGINE
@@ -41,29 +29,29 @@
 
 void setup() {
   // 1. PIN SETUP
-  #ifdef DUAL_LED_MODE
+  #if DUAL_LED_MODE == 1
     pinMode(PIN_GREEN, OUTPUT);
     pinMode(PIN_RED, OUTPUT);
     digitalWrite(PIN_GREEN, LOW);
     digitalWrite(PIN_RED, LOW);
   #else
-    pinMode(PIN_MAIN, OUTPUT);
-    digitalWrite(PIN_MAIN, LOW);
+    pinMode(PIN_SINGLE, OUTPUT); // Fixed variable name from config.h
+    digitalWrite(PIN_SINGLE, LOW);
   #endif
 
   // 2. ROTATION LOGIC (Entropy)
   // Read -> Calculate Next -> Write Immediately
-  byte mode = EEPROM.read(MEM_ADDR);
-  if (mode >= TOTAL_MODES) mode = 0;
+  byte mode = EEPROM.read(0);
+  if (mode >= TOTAL_CHAMBERS) mode = 0;
   
-  byte nextMode = (mode + 1) % TOTAL_MODES;
-  EEPROM.write(MEM_ADDR, nextMode);
+  byte nextMode = (mode + 1) % TOTAL_CHAMBERS;
+  EEPROM.write(0, nextMode);
 
   // 3. IDENTIFICATION PHASE (The Count)
   DigiKeyboard.delay(1000); // USB Stabilization
 
   for (int i = 0; i <= mode; i++) {
-    signal_flash(); // Flash the appropriate LED
+    signal_flash();
     DigiKeyboard.delay(300);
   }
 
@@ -83,8 +71,7 @@ void setup() {
 
   // 6. COMPLETION PHASE
   signal_done();
-  
-  for (;;) {} // Die loop
+  for (;;) {} // Universal Die loop
 }
 
 void loop() {}
@@ -94,50 +81,52 @@ void loop() {}
 // ==========================================
 
 void signal_flash() {
-  #ifdef DUAL_LED_MODE
+  #if DUAL_LED_MODE == 1
     // Green Blink
     digitalWrite(PIN_GREEN, HIGH);
     DigiKeyboard.delay(200);
     digitalWrite(PIN_GREEN, LOW);
   #else
     // Main Blink
-    digitalWrite(PIN_MAIN, HIGH);
+    digitalWrite(PIN_SINGLE, HIGH);
     DigiKeyboard.delay(200);
-    digitalWrite(PIN_MAIN, LOW);
+    digitalWrite(PIN_SINGLE, LOW);
   #endif
 }
 
 void signal_arm() {
-  #ifdef DUAL_LED_MODE
+  #if DUAL_LED_MODE == 1
     // Turn RED to indicate danger
     digitalWrite(PIN_RED, HIGH);
   #else
     // Turn SOLID ON to indicate danger
-    digitalWrite(PIN_MAIN, HIGH);
+    digitalWrite(PIN_SINGLE, HIGH);
   #endif
 }
 
 void signal_fire() {
-  #ifdef DUAL_LED_MODE
+  #if DUAL_LED_MODE == 1
     // Turn off Red (Go Dark for stealth/power)
     digitalWrite(PIN_RED, LOW);
   #else
     // Turn off Main (Go Dark)
-    digitalWrite(PIN_MAIN, LOW);
+    digitalWrite(PIN_SINGLE, LOW);
   #endif
 }
 
 void signal_done() {
-  #ifdef DUAL_LED_MODE
+  #if DUAL_LED_MODE == 1
     // Solid Green = Success
     digitalWrite(PIN_GREEN, HIGH);
   #else
     // Fast Strobe = Success
-    while(true) {
-      digitalWrite(PIN_MAIN, HIGH);
-      DigiKeyboard.delay(50);
-      digitalWrite(PIN_MAIN, LOW);
-      DigiKeyboard.delay(50);
+    // We do not loop here; we let the main setup() hit the eternal loop.
+    for(int i=0; i<10; i++){
+       digitalWrite(PIN_SINGLE, HIGH);
+       DigiKeyboard.delay(50);
+       digitalWrite(PIN_SINGLE, LOW);
+       DigiKeyboard.delay(50);
     }
+    digitalWrite(PIN_SINGLE, HIGH); // Leave on to signify done
   #endif
 }
