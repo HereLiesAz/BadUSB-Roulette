@@ -31,23 +31,19 @@ jobs:
           arduino-cli core install digistump:avr
 
       # --- BUILD ---
-      - name: Compile Firmware & Fetch Driver
+      - name: Compile Firmware
         run: |
           # 1. Clean Inventory
-          mkdir -p firmware
+          # ONLY delete hex files. Preserve the JS driver.
           rm -f firmware/*.hex
-          rm -f firmware/*.js
-          echo "Inventory Cleared."
+          echo "Hex inventory cleared. Driver preserved."
 
-          # 2. DOWNLOAD DRIVER (Self-Hosting)
-          echo ">>> ACQUIRING DRIVER..."
-          curl -L -o firmware/micronucleus.js https://raw.githubusercontent.com/skandhurkat/micronucleus-web/master/lib/micronucleus.js
-          
-          # Verify Driver
+          # 2. Verify Driver Exists
           if [ -s "firmware/micronucleus.js" ]; then
-            echo "Driver Acquired Successfully."
+            echo "Driver Check: OK"
           else
-            echo "CRITICAL: Failed to download driver."
+            echo "CRITICAL: firmware/micronucleus.js is missing!"
+            echo "You must commit the driver file to the repository."
             exit 1
           fi
 
@@ -90,14 +86,15 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add firmware/*
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Reload: Updated Firmware & Driver [skip ci]" && git push)
+          git add firmware/*.hex
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Reload: Updated Firmware [skip ci]" && git push)
 
       # --- DEPLOY SITE ---
       - name: Stage & Deploy Website
         run: |
           mkdir -p public
           cp index.html public/index.html
+          # Copy the firmware folder (containing .hex AND .js) to the deploy folder
           cp -r firmware public/firmware
           touch public/.nojekyll
 
