@@ -20,21 +20,14 @@
       background-color: var(--bg-color);
       color: var(--term-green);
       font-family: 'Consolas', 'Monaco', monospace;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      overflow-x: hidden;
+      margin: 0; padding: 0;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh; overflow-x: hidden;
     }
 
     header {
-      width: 100%;
-      padding: 20px 0;
-      text-align: center;
-      border-bottom: 1px solid var(--term-dim);
-      margin-bottom: 20px;
+      width: 100%; padding: 20px 0; text-align: center;
+      border-bottom: 1px solid var(--term-dim); margin-bottom: 20px;
       position: relative;
     }
 
@@ -48,40 +41,31 @@
     .status-ok { color: var(--term-green) !important; border-color: var(--term-green) !important; }
     .status-err { color: var(--alert-red) !important; border-color: var(--alert-red) !important; }
 
-    /* MANUAL DRIVER ZONE */
     #manualDriverZone {
-      display: none;
-      background: rgba(50, 0, 0, 0.3);
-      border: 1px dashed var(--alert-red);
-      padding: 10px;
-      margin-bottom: 20px;
-      text-align: center;
-      width: 90%;
-      max-width: 600px;
+      display: none; background: rgba(50, 0, 0, 0.3);
+      border: 1px dashed var(--alert-red); padding: 10px;
+      margin-bottom: 20px; text-align: center; width: 90%; max-width: 600px;
     }
     .driver-btn {
-      background: var(--alert-red); color: #000;
-      border: none; padding: 5px 10px; cursor: pointer;
-      font-weight: bold; font-family: inherit; margin-top: 5px;
+      background: var(--alert-red); color: #000; border: none;
+      padding: 5px 10px; cursor: pointer; font-weight: bold;
+      font-family: inherit; margin-top: 5px;
     }
 
-    /* OS WARNINGS */
     .os-warning {
-      display: none;
-      width: 95%; max-width: 800px;
-      border: 1px solid var(--alert-red);
-      background: rgba(50, 0, 0, 0.8);
-      margin-bottom: 20px;
-      padding: 15px; font-size: 0.9rem; color: #fff;
-      text-align: left;
+      display: none; width: 95%; max-width: 800px;
+      border: 1px solid var(--alert-red); background: rgba(50, 0, 0, 0.8);
+      margin-bottom: 20px; padding: 15px; font-size: 0.9rem;
+      color: #fff; text-align: left;
     }
-    .os-warning h3 { margin: 0 0 10px 0; color: var(--alert-red); border-bottom: 1px solid var(--alert-red); padding-bottom: 5px; font-size: 1rem; }
-    .os-warning a { color: #fff; text-decoration: underline; }
+    .os-warning h3 { 
+      margin: 0 0 10px 0; color: var(--alert-red); 
+      border-bottom: 1px solid var(--alert-red); padding-bottom: 5px; 
+    }
     .code-block {
-      background: #000; border: 1px solid #666;
-      padding: 10px; margin-top: 10px;
-      font-family: 'Consolas', monospace; font-size: 0.8rem;
-      color: #ccc; white-space: pre-wrap; word-break: break-all;
+      background: #000; border: 1px solid #666; padding: 10px;
+      margin-top: 10px; font-family: 'Consolas', monospace;
+      font-size: 0.8rem; color: #ccc; white-space: pre-wrap; word-break: break-all;
     }
 
     .armory-controls {
@@ -92,8 +76,7 @@
 
     select, .file-upload {
       background: #000; color: var(--term-green);
-      border: 1px solid #333; padding: 8px;
-      font-family: inherit; cursor: pointer;
+      border: 1px solid #333; padding: 8px; font-family: inherit; cursor: pointer;
     }
     .file-upload { color: #888; border-style: dashed; }
     .file-upload:hover { border-color: var(--term-green); color: var(--term-green); }
@@ -141,8 +124,7 @@
 
     .console-wrapper {
       width: 95%; max-width: 1600px;
-      background: #000; border: 1px solid #333;
-      margin-bottom: 40px;
+      background: #000; border: 1px solid #333; margin-bottom: 40px;
     }
     .console-header {
       background: #111; border-bottom: 1px solid #333;
@@ -156,7 +138,6 @@
     .log-line { border-bottom: 1px solid #111; padding: 2px 0; }
     .log-err { color: var(--alert-red); }
     .log-ok { color: var(--term-green); }
-    .log-warn { color: #ff0; }
     .log-debug { color: #555; }
   </style>
 
@@ -173,7 +154,6 @@
       document.getElementById('driverStatus').innerText = "DRIVER: MISSING";
       document.getElementById('driverStatus').className = "status-err";
       document.getElementById('manualDriverZone').style.display = 'block';
-      console.error("Micronucleus Failed to Load.");
     }
   </script>
   
@@ -191,9 +171,6 @@
     <div style="color: var(--alert-red); font-weight: bold; margin-bottom: 5px;">
       ⚠️ AUTOMATIC DRIVER LOAD FAILED
     </div>
-    <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">
-      The server is slow or blocking the file. Upload <strong>micronucleus.js</strong> manually.
-    </div>
     <label class="driver-btn">
       LOAD DRIVER FROM DISK
       <input type="file" id="manualDriverFile" accept=".js" style="display:none;">
@@ -206,21 +183,20 @@
     <br><br>
     1. Download <a href="https://zadig.akeo.ie/" target="_blank">Zadig</a>.<br>
     2. Options > 'List All Devices'.<br>
-    3. Select 'Digispark Bootloader' and replace driver with <strong>WinUSB</strong>.
+    3. Select 'Digispark Bootloader' -> Replace with <strong>WinUSB</strong>.
   </div>
 
   <div id="linuxWarning" class="os-warning">
     <h3>/// LINUX PERMISSION ERROR ///</h3>
-    <strong>ACCESS DENIED:</strong> Your user does not have permission to access this USB device.
-    <br>Run this command in your terminal to fix the udev rules, then <strong>unplug and replug</strong> the Digispark:
+    <strong>ACCESS DENIED:</strong> Run this, then unplug/replug:
     <div class="code-block">echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="16d0", ATTR{idProduct}=="0753", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/99-digispark.rules && sudo udevadm control --reload-rules && sudo udevadm trigger</div>
   </div>
 
   <div class="armory-controls">
     <label>TARGET:</label>
     <select id="hwModel">
-      <option value="roulette_single.hex">SINGLE LED</option>
-      <option value="roulette_dual.hex">DUAL LED</option>
+      <option value="roulette_single.hex">UNIVERSAL SINGLE (Pin 0+1)</option>
+      <option value="roulette_dual.hex">DUAL LED (Green P0, Red P1)</option>
     </select>
     
     <label class="file-upload">
@@ -240,7 +216,7 @@
           <option value="LINUX">LINUX</option>
         </select>
       </div>
-      <textarea id="c1" placeholder="// WINDOWS PAYLOAD&#10;DELAY 1000&#10;GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER"></textarea>
+      <textarea id="c1" placeholder="// CHAMBER 1 PAYLOAD"></textarea>
     </div>
     <div class="chamber">
       <div class="chamber-header">
@@ -252,7 +228,7 @@
           <option value="LINUX">LINUX</option>
         </select>
       </div>
-      <textarea id="c2" placeholder="// MAC PAYLOAD&#10;DELAY 1000&#10;GUI SPACE&#10;DELAY 200&#10;STRING Terminal&#10;ENTER"></textarea>
+      <textarea id="c2" placeholder="// CHAMBER 2 PAYLOAD"></textarea>
     </div>
     <div class="chamber">
       <div class="chamber-header">
@@ -264,7 +240,7 @@
           <option value="LINUX">LINUX</option>
         </select>
       </div>
-      <textarea id="c3" placeholder="// LINUX PAYLOAD&#10;DELAY 1000&#10;GUI&#10;DELAY 200&#10;STRING firefox&#10;ENTER"></textarea>
+      <textarea id="c3" placeholder="// CHAMBER 3 PAYLOAD"></textarea>
     </div>
   </div>
 
@@ -278,56 +254,38 @@
   </div>
 
 <script>
-// --- MANUAL DRIVER HANDLER ---
+// --- HANDLERS ---
 document.getElementById('manualDriverFile').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  
   const reader = new FileReader();
   reader.onload = function(evt) {
-    try {
-      const script = document.createElement('script');
-      script.text = evt.target.result;
-      document.head.appendChild(script);
-
-      if (typeof Micronucleus !== 'undefined') {
-        onDriverLoad();
-        logMsg("[SYS] Driver Manual Override Successful.", 'success');
-      } else {
-        throw new Error("Script loaded but Micronucleus object not found.");
-      }
-    } catch(err) {
-      logMsg("[FATAL] Invalid JS file: " + err.message, 'error');
-    }
+    const script = document.createElement('script');
+    script.text = evt.target.result;
+    document.head.appendChild(script);
+    setTimeout(() => { if (typeof Micronucleus !== 'undefined') onDriverLoad(); }, 100);
   };
   reader.readAsText(file);
 });
 
-// --- PAYLOAD MUTATOR ---
 function mutate(selectEl, targetId) {
   const ta = document.getElementById(targetId);
   const mode = selectEl.value;
-  if(mode === 'WIN') {
-    ta.value = "// WINDOWS PAYLOAD\nDELAY 1000\nGUI r\nDELAY 200\nSTRING notepad\nENTER\nDELAY 500\nSTRING Hello from BadUSB!\nENTER";
-  } else if (mode === 'MAC') {
-    ta.value = "// MAC PAYLOAD\nDELAY 1000\nGUI SPACE\nDELAY 200\nSTRING Terminal\nENTER\nDELAY 500\nSTRING echo Hello World\nENTER";
-  } else if (mode === 'LINUX') {
-    ta.value = "// LINUX PAYLOAD\nDELAY 1000\nGUI\nDELAY 200\nSTRING terminal\nENTER\nDELAY 500\nSTRING echo 'Hello World'\nENTER";
-  }
+  if(mode === 'WIN') ta.value = "// WINDOWS PAYLOAD\nDELAY 1000\nGUI r\nDELAY 200\nSTRING notepad\nENTER\nDELAY 500\nSTRING FATAL ERROR\nENTER";
+  else if (mode === 'MAC') ta.value = "// MAC PAYLOAD\nDELAY 1000\nGUI SPACE\nDELAY 200\nSTRING Terminal\nENTER\nDELAY 500\nSTRING echo 'PANIC'\nENTER";
+  else if (mode === 'LINUX') ta.value = "// LINUX PAYLOAD\nDELAY 1000\nGUI\nDELAY 200\nSTRING terminal\nENTER\nDELAY 500\nSTRING echo 'RM -RF /'\nENTER";
 }
 
-// --- UTILS ---
 function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
   const line = document.createElement('div');
-  line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : type === 'debug' ? 'log-debug' : '');
-  const timestamp = new Date().toLocaleTimeString('en-US',{hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 3});
-  line.innerText = `[${timestamp}] ${msg}`;
+  line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : 'log-debug');
+  line.innerText = `[${new Date().toLocaleTimeString('en-US',{hour12:false})}] ${msg}`;
   logEl.appendChild(line);
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-// --- DUCKYSCRIPT COMPILER ---
+// --- COMPILER ---
 const KEY_MAP = {
   'ENTER':0x28, 'ESC':0x29, 'BACKSPACE':0x2A, 'TAB':0x2B, 'SPACE':0x2C, 'MINUS':0x2D, 
   'EQUAL':0x2E, 'LEFT_BRACE':0x2F, 'RIGHT_BRACE':0x30, 'BACKSLASH':0x31, 'SEMICOLON':0x33, 
@@ -335,76 +293,87 @@ const KEY_MAP = {
   'F1':0x3A, 'F2':0x3B, 'F3':0x3C, 'F4':0x3D, 'F5':0x3E, 'F6':0x3F, 'F7':0x40, 'F8':0x41, 
   'F9':0x42, 'F10':0x43, 'F11':0x44, 'F12':0x45, 'PRINTSCREEN':0x46, 'SCROLL_LOCK':0x47, 
   'PAUSE':0x48, 'INSERT':0x49, 'HOME':0x4A, 'PAGE_UP':0x4B, 'DELETE':0x4C, 'END':0x4D, 
-  'PAGE_DOWN':0x4E, 'RIGHT':0x4F, 'LEFT':0x50, 'DOWN':0x51, 'UP':0x52, 'GUI':0xE3, 'WINDOWS':0xE3,
-  'COMMAND':0xE3, 'SHIFT':0xE1, 'ALT':0xE2, 'CTRL':0xE0
+  'PAGE_DOWN':0x4E, 'RIGHT':0x4F, 'LEFT':0x50, 'DOWN':0x51, 'UP':0x52, 'GUI':0xE3, 'WINDOWS':0xE3
 };
 
-const ASCII_MAP = {
-  'a':0x04,'b':0x05,'c':0x06,'d':0x07,'e':0x08,'f':0x09,'g':0x0A,'h':0x0B,'i':0x0C,'j':0x0D,
-  'k':0x0E,'l':0x0F,'m':0x10,'n':0x11,'o':0x12,'p':0x13,'q':0x14,'r':0x15,'s':0x16,'t':0x17,
-  'u':0x18,'v':0x19,'w':0x1A,'x':0x1B,'y':0x1C,'z':0x1D,'1':0x1E,'2':0x1F,'3':0x20,'4':0x21,
-  '5':0x22,'6':0x23,'7':0x24,'8':0x25,'9':0x26,'0':0x27,' ':0x2C
-};
-
-// MODIFIER BITMASKS (For DigiKeyboard.sendKeyStroke)
-const MOD_BITMASKS = {
-  'CTRL': 0x01, 'CONTROL': 0x01,
-  'SHIFT': 0x02,
-  'ALT': 0x04,
-  'GUI': 0x08, 'WINDOWS': 0x08, 'COMMAND': 0x08
-};
+const MOD_BITMASKS = { 'CTRL': 0x01, 'SHIFT': 0x02, 'ALT': 0x04, 'GUI': 0x08, 'COMMAND': 0x08 };
 
 function compileDucky(script) {
   const bytes = [];
   const lines = script.split('\n');
+  let lastCmd = null;
+
   for (let line of lines) {
     line = line.trim();
-    if (!line || line.startsWith("REM") || line.startsWith("//") || line.startsWith("#")) continue;
+    if (!line || line.startsWith("REM") || line.startsWith("//")) continue;
+    
     const parts = line.split(' ');
     const cmd = parts[0].toUpperCase();
     const args = parts.slice(1).join(' ');
+    let currentCmdBytes = [];
+
+    // 1. REPEAT
+    if (cmd === 'REPEAT') {
+        const count = parseInt(args);
+        if (lastCmd && !isNaN(count)) {
+            for(let k=0; k<count; k++) {
+                bytes.push(...lastCmd);
+            }
+        }
+        continue; // Don't update lastCmd
+    }
     
-    // 1. DELAY
-    if (cmd === 'DELAY') {
+    // 2. DELAY
+    else if (cmd === 'DELAY') {
       const ms = parseInt(args);
-      bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
+      currentCmdBytes = [0x01, (ms >> 8) & 0xFF, ms & 0xFF];
     } 
-    // 2. STRING
+    // 3. STRING
     else if (cmd === 'STRING') {
       for (let i = 0; i < args.length; i += 255) {
         const chunk = args.substring(i, Math.min(i + 255, args.length));
-        bytes.push(0x03, chunk.length); 
-        for (let c = 0; c < chunk.length; c++) bytes.push(chunk.charCodeAt(c));
+        currentCmdBytes.push(0x03, chunk.length); 
+        for (let c = 0; c < chunk.length; c++) currentCmdBytes.push(chunk.charCodeAt(c));
       }
     } 
-    // 3. COMBINATION (MODIFIER + KEY)
+    // 4. MODIFIER + KEY
     else if (MOD_BITMASKS[cmd] && parts.length > 1) {
-      const modMask = MOD_BITMASKS[cmd];
-      const keyStr = parts[1];
+      const keyStr = parts[1].toUpperCase();
       let keyByte = 0;
+      if (keyStr.length === 1) keyByte = getAsciiKey(keyStr); // Helper needed for basic chars
+      else if (KEY_MAP[keyStr]) keyByte = KEY_MAP[keyStr];
       
-      if (ASCII_MAP[keyStr.toLowerCase()]) keyByte = ASCII_MAP[keyStr.toLowerCase()];
-      else if (KEY_MAP[keyStr.toUpperCase()]) keyByte = KEY_MAP[keyStr.toUpperCase()];
-      
-      if (keyByte > 0) {
-        bytes.push(0x02, modMask, keyByte);
-      }
+      if (keyByte > 0) currentCmdBytes = [0x02, MOD_BITMASKS[cmd], keyByte];
     }
-    // 4. SINGLE KEY (Fallthrough)
+    // 5. SINGLE KEY
     else if (KEY_MAP[cmd]) { 
-      bytes.push(0x02, 0x00, KEY_MAP[cmd]); 
+      currentCmdBytes = [0x02, 0x00, KEY_MAP[cmd]]; 
+    }
+
+    if (currentCmdBytes.length > 0) {
+        bytes.push(...currentCmdBytes);
+        lastCmd = currentCmdBytes;
     }
   }
-  bytes.push(0x00); 
+  bytes.push(0x00); // OP_END
   return bytes;
 }
 
-// --- HEX PATCHER (SMART SLICE EDITION) ---
+// Simple lookup for 'a'-'z', '0'-'9' for the MOD+KEY parser
+function getAsciiKey(char) {
+    const code = char.toLowerCase().charCodeAt(0);
+    if (code >= 97 && code <= 122) return code - 93; // a=4
+    if (code >= 49 && code <= 57) return code - 19; // 1=30
+    if (code === 48) return 39; // 0
+    return 0;
+}
+
+// --- HEX PATCHER ---
 function patchHex(hexString, payloadData) {
-  // Use a temporary full buffer for parsing
   const fullBuffer = new Uint8Array(8192).fill(0xFF); 
   let maxAddress = 0;
 
+  // Parse Hex
   const lines = hexString.split('\n');
   for (let line of lines) {
     line = line.trim();
@@ -412,128 +381,83 @@ function patchHex(hexString, payloadData) {
     const len = parseInt(line.substr(1, 2), 16);
     const addr = parseInt(line.substr(3, 4), 16);
     const type = parseInt(line.substr(7, 2), 16);
-    
     if (type === 0) { 
       for (let i = 0; i < len; i++) { 
         fullBuffer[addr + i] = parseInt(line.substr(9 + i * 2, 2), 16); 
       }
-      // Track the highest byte written by the base firmware
       if (addr + len > maxAddress) maxAddress = addr + len;
     }
   }
 
-  // Find Header
+  // Find Header (CAFEBABE)
   let magicIdx = -1;
-  for (let i = 0; i < fullBuffer.length - 4; i++) {
+  for (let i = 0; i < maxAddress; i++) {
     if (fullBuffer[i]===0xCA && fullBuffer[i+1]===0xFE && fullBuffer[i+2]===0xBA && fullBuffer[i+3]===0xBE) {
       magicIdx = i; break;
     }
   }
-  
-  if (magicIdx === -1) throw new Error("TEMPLATE INVALID: MAGIC HEADER NOT FOUND");
-  logMsg(`[SURGERY] Base Firmware Size: ${maxAddress} bytes`, 'debug');
-  logMsg(`[SURGERY] Magic Header at: 0x${magicIdx.toString(16).toUpperCase()}`, 'debug');
+  if (magicIdx === -1) throw new Error("FIRMWARE CORRUPTED: Magic Header Missing");
 
-  // Inject Payloads
   let currentOffset = 10;
-  function inject(payload, label, offH_idx, offL_idx) {
-    // Pointer Update
+  function inject(payload, offH_idx, offL_idx) {
+    // FIX: If payload is just [0x00] (Empty), DO NOT point to it. 
+    // Point to 0x0000 so the firmware ignores the chamber.
+    if (payload.length <= 1) {
+        fullBuffer[magicIdx + offH_idx] = 0x00;
+        fullBuffer[magicIdx + offL_idx] = 0x00;
+        return;
+    }
+
+    // Write Offset
     fullBuffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     fullBuffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     
-    if (payload.length <= 1) return;
+    // Safety Checks
+    if (currentOffset + payload.length > 1024) throw new Error("PAYLOAD OVERFLOW: 1KB LIMIT EXCEEDED");
     
-    // SAFETY CHECK: Ensure we don't breach the 1KB storage reserved in firmware
-    if (currentOffset + payload.length > 1024) {
-      throw new Error(`CHAMBER OVERFLOW: ${label} (Size: ${payload.length}) exceeds available storage.`);
-    }
-
-    // Safety check relative to buffer
-    if (magicIdx + currentOffset + payload.length >= fullBuffer.length) throw new Error("PAYLOAD TOO LARGE");
-
+    // Write Data
     let writePtr = magicIdx + currentOffset;
-    for(let b of payload) {
-        fullBuffer[writePtr++] = b;
-    }
-    
-    // Update Max Address if payload extends beyond current firmware size
+    for(let b of payload) fullBuffer[writePtr++] = b;
     if (writePtr > maxAddress) maxAddress = writePtr;
     
     currentOffset += payload.length;
   }
 
-  inject(payloadData.c1, "Chamber 1", 4, 5);
-  inject(payloadData.c2, "Chamber 2", 6, 7);
-  inject(payloadData.c3, "Chamber 3", 8, 9);
+  inject(payloadData.c1, 4, 5);
+  inject(payloadData.c2, 6, 7);
+  inject(payloadData.c3, 8, 9);
   
-  // --- CRITICAL: TRIM BUFFER ---
-  // We only return the buffer up to the last used byte.
-  // We align it to 64-byte pages (MicroNucleus Page Size) to be clean.
-  const alignedSize = Math.ceil(maxAddress / 64) * 64;
-  logMsg(`[SURGERY] Final Image Size: ${alignedSize} bytes (Safety Trim)`, 'success');
-  
-  return fullBuffer.slice(0, alignedSize);
+  return fullBuffer.slice(0, Math.ceil(maxAddress / 64) * 64);
 }
 
-// --- ACQUIRE FIRMWARE ---
-async function acquireFirmware(filename) {
-  const response = await fetch(`firmware/${filename}`);
-  if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-  return await response.text();
-}
-
-// --- MANUAL HEX HANDLER ---
-document.getElementById('customHex').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const text = await file.text();
-    // We just override the acquireFirmware function temporarily for this session
-    acquireFirmware = async () => text;
-    logMsg(`[SYS] Custom Firmware Loaded: ${file.name}`, 'warn');
-});
-
+// --- FLASHER ---
 document.getElementById('burnBtn').addEventListener('click', async () => {
   const hw = document.getElementById('hwModel').value;
   try {
     if (!navigator.usb) throw new Error("WebUSB not supported");
-    
-    // STARTUP CHECK: Ensure Driver Loaded
-    if (typeof Micronucleus === 'undefined') {
-       throw new Error("Driver Failed to Load. Check Console/Network.");
-    }
-
-    logMsg("--- STARTING SEQUENCE ---");
+    if (typeof Micronucleus === 'undefined') throw new Error("Driver not loaded.");
     
     const payloads = {
       c1: compileDucky(document.getElementById('c1').value),
       c2: compileDucky(document.getElementById('c2').value),
       c3: compileDucky(document.getElementById('c3').value)
     };
-    logMsg("[CMP] Compilation Complete", 'success');
     
-    const hexText = await acquireFirmware(hw);
-    logMsg(`[HEX] Firmware loaded (${hexText.length} bytes)`, 'success');
+    const response = await fetch(`firmware/${hw}`);
+    if(!response.ok) throw new Error("Hex file missing");
+    const hexText = await response.text();
     
     const firmBuffer = patchHex(hexText, payloads);
-    logMsg("[PAT] Firmware Patched Successfully", 'success');
+    logMsg(`[SYS] Flashing ${firmBuffer.length} bytes...`, 'warn');
     
-    logMsg("[USB] Requesting Device...", 'warn');
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
-    
     const client = new Micronucleus(device);
-    
-    logMsg("[USB] Flashing...", 'warn');
     await client.upload(firmBuffer);
-    logMsg("--- FLASH COMPLETE ---", 'success');
+    logMsg("/// DONE ///", 'success');
     
   } catch (e) {
-    // DIAGNOSTIC: Check for Linux Permission Error
-    if (e.message.includes("Access denied")) {
-        document.getElementById('linuxWarning').style.display = 'block';
-        logMsg(`[FATAL] USB PERMISSION ERROR (Linux Detected). See warnings above.`, 'error');
-    } else {
-        logMsg(`[FATAL] ${e.message}`, 'error');
-    }
+    if (e.message.includes("Access denied")) document.getElementById('linuxWarning').style.display = 'block';
+    logMsg(e.message, 'error');
   }
 });
 </script>
