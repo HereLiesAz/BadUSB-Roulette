@@ -1,87 +1,48 @@
-# BadUSB-Roulette for the DigiSpark ATTiny85. 
+# BadUSB-Roulette (Web-Flasher Edition)
 
-  The BadUSB is a revolver. <br>
-    The barrel holds three bullets. <br>
-      Plug the BadUSB in to see which bullet is in the chamber. <br>
-        Unplug it to select the next bullet. <br>
-          Or leave it in to fire that bullet. <br>
-          
-   Just like Russian Roulette, except you control the bullet. <br>
-    Which, I guess, makes it normal Roulette... the kind we all necessarily play when a revolver is involved. <br>
-    <br>  And this repository is a munitions factory, designed for "Drop-and-Load" simplicity. <br>
-    <br>
-      You do not need to know C++. You do not need to convert your duckyscript. You do not need to install Arduino. <br>
-    Just load that gun of yours and cock it. <br><br>
-    
-                  BasUSB-Roulette/
-    Don't touch.  ├── .github/workflows/
-    Don't touch.  │   └── factory.yml        <-- THE ENGINE. This GitHub Action watches for your
-                  │                              changes, converts your scripts, compiles the
-                  │                              firmware, and deploys the Flasher Website.
-                  │
-    Don't touch.  ├── src/
-                  │   ├── chamber-one/       <-- WINDOWS PAYLOADS, for example. Drop .txt or .ino files here.
-    Delete.       │   │   ├── 00_setup.txt
-    Replace.      │   │   └── 01_exploit.txt
-                  │   │
-                  │   ├── chamber-two/       <-- MAC PAYLOADS, for example. Drop files here.
-    Replace.      │   │   └── payload.txt
-                  │   │
-                  │   ├── chamber-three/     <-- LINUX/MOBILE PAYLOADS, for example. Drop files here.
-    Replace.      │   │   └── payload.txt
-                  │
-    Don't touch.  ├── scripts/
-                  │   └── weaponizer.py      <-- THE TRANSLATOR. A Python script that converts
-                  │                              DuckyScript to C++ and merges multiple files
-                  │                              into a single payload header.
-                  │
-    Don't touch.  ├── config.h               <-- HARDWARE SETTINGS. Defines pinouts and timings.
-                  │
-    Don't touch.  └── Roulette.ino           <-- THE TRIGGER. The main logic that handles
-                                                 entropy, LED signaling, and payload execution.
+The BadUSB is a revolver. The barrel holds three bullets.
+Plug the BadUSB in to see which bullet is in the chamber.
+Unplug it to select the next bullet.
+Or leave it in to fire that bullet.
 
-<br><br>
-## Operational Instructions
- 
-  ### Phase 1: The Setup
-  #### 1. Fork this Repository to your own GitHub account.
-  
-  #### 2. Enable GitHub Actions in the "Actions" tab.
-  
-  #### 3. Go to Settings > Pages and set the Source to gh-pages (root).
-  
-  ### Phase 2: The Loadout
-  #### 1. Navigate to src/chamber-one/ (or two. Or three.)
-  
-  #### 2. Delete the placeholder files.
-  
-  #### 3. Upload your payloads:
-  
-   -  Duckyscript (.txt): Standard syntax (GUI r, STRING hello, DELAY 500).
-  
-   -  Arduino C++ (.ino): Raw code for advanced, raw users.
-  
-  #### 4. Note that files are executed in alphabetical order.
-  
-  #### 5. Commit changes.
-  
-  ### Phase 3: The Fabrication
-  #### 1. Wait ~60 seconds.
-  
-  #### 2. The Factory Action is running. It will:
-  
-   -  Convert your Duckyscript to C++.
-  
-   -  Compile two firmware versions (Single LED & Dual LED).
-  
-   -  Deploy a Web Flasher to your repository's website.
-  
-  ### Phase 4: The Flash
-  #### 1. Visit your deployed site: WHATS_YOUR_FACE.github.io/BadUSB-Roulette/
-  
-  #### 2. Click "ARM DEVICE."
-  
-  #### 3. Plug in your DigiSpark ATTiny85 when prompted.
-  
-  #### 4. Pew pew.
+Just like Russian Roulette, except you control the bullet.
+Which, I guess, makes it normal Roulette... the kind we all necessarily play when a revolver is involved.
 
+## How It Actually Works
+This is **NOT** a drag-and-drop folder system. That was a lie.
+This is a **Web-Compiler**.
+
+1. **The Repo:** Hosts a website (`index.html`) and two compiled firmware templates.
+2. **The Browser:** You load DuckyScripts into the website.
+3. **The Flash:** The website compiles your scripts to bytecode, patches the firmware binary in memory, and flashes it to your DigiSpark via WebUSB.
+
+## Instructions
+
+### Phase 1: Deployment
+1. **Fork** this repository.
+2. Go to **Settings > Pages**.
+3. Set the Source to **GitHub Actions** (or `gh-pages` branch if the Action has already run).
+4. Wait for the `Deploy Armory` action to finish.
+
+### Phase 2: Ammunition
+1. Visit your deployed site: `https://YOUR_USER.github.io/BadUSB-Roulette/`
+2. **Connect** your DigiSpark ATTiny85.
+3. **Write** or **Load** DuckyScript into the three chambers on the screen.
+   - Chamber 1: Windows Payload?
+   - Chamber 2: Mac Payload?
+   - Chamber 3: Linux Payload?
+4. **Click "FLASH FIRMWARE"**.
+5. The site will compile the scripts, inject them into the hex file, and burn it to the device.
+
+### Phase 3: Violence
+1. Plug the device into a target.
+2. It blinks to tell you which chamber is active (1, 2, or 3).
+3. **Wait 3 seconds** to fire.
+4. **Unplug immediately** to cycle to the next chamber without firing.
+5. Empty chambers are automatically skipped.
+
+## Payload Syntax (DuckyScript)
+- `STRING hello world` - Types text.
+- `DELAY 500` - Waits 500ms.
+- `GUI r` - Windows Run / Command Space.
+- `ENTER` - Presses Enter.
