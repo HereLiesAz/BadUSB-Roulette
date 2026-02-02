@@ -25,7 +25,7 @@ def parse_ducky(line):
     return f"// Unknown Ducky: {line}"
 
 # --- MAIN PROCESSOR ---
-# ALIGNED: These names now match the switch cases in Roulette.ino
+# ALIGNED: These names now match the switch cases in TheRevolver.ino
 chambers = {
     "chamber-one": "fire_windows",
     "chamber-two": "fire_mac",
