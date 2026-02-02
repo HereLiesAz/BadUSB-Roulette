@@ -241,7 +241,7 @@ const KEY_MAP = {
   'F9':0x42, 'F10':0x43, 'F11':0x44, 'F12':0x45, 'PRINTSCREEN':0x46, 'SCROLL_LOCK':0x47, 
   'PAUSE':0x48, 'INSERT':0x49, 'HOME':0x4A, 'PAGE_UP':0x4B, 'DELETE':0x4C, 'END':0x4D, 
   'PAGE_DOWN':0x4E, 'RIGHT':0x4F, 'LEFT':0x50, 'DOWN':0x51, 'UP':0x52, 'GUI':0xE3, 'WINDOWS':0xE3,
-  'SHIFT':0xE1, 'ALT':0xE2, 'CTRL':0xE0
+  'COMMAND':0xE3, 'SHIFT':0xE1, 'ALT':0xE2, 'CTRL':0xE0
 };
 
 const ASCII_MAP = {
@@ -274,7 +274,7 @@ function compileDucky(script) {
         for (let c = 0; c < chunk.length; c++) bytes.push(chunk.charCodeAt(c));
       }
     }
-    else if (cmd === 'GUI' || cmd === 'WINDOWS') {
+    else if (cmd === 'GUI' || cmd === 'WINDOWS' || cmd === 'COMMAND') {
       let key = 0;
       if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
       else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
@@ -322,12 +322,25 @@ function patchHex(hexString, payloadData) {
       return; 
     }
     
-    if (dataStart + payload.length > 8192) throw new Error("PAYLOAD TOO LARGE");
+    // FIXED: The overflow check was incorrect. It checked relative payload size vs total buffer size
+    // instead of checking if the absolute position would exceed the buffer limits.
+    if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE - FLASH OVERFLOW");
 
     buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     
-    for(let b of payload) buffer[magicIdx + dataStart++] = b;
+    // Write payload bytes relative to the Magic Marker
+    // Since currentOffset tracks position relative to magicIdx, this math is consistent.
+    for(let b of payload) {
+        buffer[magicIdx + 10 + (currentOffset - 10)] = b; // Re-aligning logic for clarity
+    }
+    // Optimizing the loop above to match previous style but with safety:
+    // We can just iterate the payload and write to absolute indices
+    let writePtr = magicIdx + currentOffset;
+    for(let b of payload) {
+        buffer[writePtr++] = b;
+    }
+    
     currentOffset += payload.length;
   }
 
