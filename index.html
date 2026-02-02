@@ -69,8 +69,8 @@
 
     /* --- THE MANUAL (COLLAPSIBLE) --- */
     .manual-container {
-      width: 90%;
-      max-width: 1400px;
+      width: 95%;
+      max-width: 1600px;
       border: 1px solid var(--term-dim);
       margin-bottom: 30px;
       background: #000;
@@ -207,7 +207,7 @@
     .trigger-zone {
       width: 100%;
       text-align: center;
-      padding-bottom: 50px;
+      padding-bottom: 30px;
     }
 
     button#burnBtn {
@@ -220,8 +220,6 @@
       cursor: pointer;
       text-transform: uppercase;
       transition: 0.2s;
-      position: relative;
-      overflow: hidden;
     }
 
     button#burnBtn:hover {
@@ -230,16 +228,47 @@
       box-shadow: 0 0 30px var(--term-green);
     }
 
-    #log {
-      margin-top: 20px;
-      font-size: 1rem;
-      color: #666;
-      min-height: 30px;
+    /* --- SYSTEM CONSOLE --- */
+    .console-wrapper {
+      width: 95%;
+      max-width: 1600px;
+      background: #000;
+      border: 1px solid var(--term-dim);
+      margin-bottom: 50px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .console-header {
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--term-dim);
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      color: var(--term-dim);
+      letter-spacing: 2px;
       text-transform: uppercase;
     }
 
-    /* --- UTILITY --- */
-    .warning-text { color: var(--alert-red); }
+    #log {
+      height: 200px;
+      overflow-y: scroll;
+      padding: 10px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.9rem;
+      color: #888;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbar styling */
+    #log::-webkit-scrollbar { width: 8px; }
+    #log::-webkit-scrollbar-track { background: #000; }
+    #log::-webkit-scrollbar-thumb { background: #333; }
+    #log::-webkit-scrollbar-thumb:hover { background: var(--term-green); }
+
+    .log-line { margin-bottom: 2px; border-left: 2px solid transparent; padding-left: 5px; }
+    .log-err { color: var(--alert-red); border-left-color: var(--alert-red); }
+    .log-ok { color: var(--term-green); border-left-color: var(--term-green); }
+    .log-warn { color: #ff0; border-left-color: #ff0; }
   </style>
 </head>
 <body>
@@ -315,10 +344,34 @@
 
   <div class="trigger-zone">
     <button id="burnBtn">FLASH FIRMWARE</button>
-    <div id="log">STATUS: IDLE. AWAITING INPUT.</div>
+  </div>
+
+  <div class="console-wrapper">
+    <div class="console-header">/// SYSTEM OUTPUT ///</div>
+    <div id="log">
+      <div class="log-line">[SYSTEM] READY. AWAITING PAYLOADS...</div>
+    </div>
   </div>
 
 <script>
+// --- LOGGING ENGINE ---
+function logMsg(msg, type='normal') {
+  const logEl = document.getElementById('log');
+  const line = document.createElement('div');
+  
+  let cssClass = 'log-line';
+  if(type === 'error') cssClass += ' log-err';
+  if(type === 'success') cssClass += ' log-ok';
+  if(type === 'warn') cssClass += ' log-warn';
+  
+  line.className = cssClass;
+  const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+  line.innerText = `[${time}] ${msg}`;
+  
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
 // --- DRAG & DROP LOGIC ---
 ['box1', 'box2', 'box3'].forEach((id) => {
   const el = document.getElementById(id);
@@ -329,15 +382,26 @@
   el.addEventListener('drop', (e) => {
     e.preventDefault();
     el.classList.remove('dragover');
-    if (e.dataTransfer.files[0]) readFileInto(e.dataTransfer.files[0], textarea);
+    if (e.dataTransfer.files[0]) {
+      logMsg("FILE DETECTED. LOADING...", 'warn');
+      readFileInto(e.dataTransfer.files[0], textarea);
+    }
   });
 });
 
 function triggerFile(id) { document.getElementById(id).click(); }
-function loadFile(input, id) { if(input.files[0]) readFileInto(input.files[0], document.getElementById(id)); }
+function loadFile(input, id) { 
+  if(input.files[0]) {
+    logMsg("FILE SELECTED. LOADING...", 'warn');
+    readFileInto(input.files[0], document.getElementById(id)); 
+  }
+}
 function readFileInto(file, textarea) {
   const reader = new FileReader();
-  reader.onload = (e) => textarea.value = e.target.result;
+  reader.onload = (e) => {
+    textarea.value = e.target.result;
+    logMsg("FILE LOADED SUCCESSFULLY.");
+  };
   reader.readAsText(file);
 }
 
@@ -348,4 +412,135 @@ const KEY_MAP = {
   'QUOTE':0x34, 'GRAVE':0x35, 'COMMA':0x36, 'PERIOD':0x37, 'SLASH':0x38, 'CAPS_LOCK':0x39, 
   'F1':0x3A, 'F2':0x3B, 'F3':0x3C, 'F4':0x3D, 'F5':0x3E, 'F6':0x3F, 'F7':0x40, 'F8':0x41, 
   'F9':0x42, 'F10':0x43, 'F11':0x44, 'F12':0x45, 'PRINTSCREEN':0x46, 'SCROLL_LOCK':0x47, 
-  'PAUSE':0x48, 'INSERT':0x49, 'HOME':0x4A, 'PAGE_UP':0x4B, 'DELETE':0x4C, 'END
+  'PAUSE':0x48, 'INSERT':0x49, 'HOME':0x4A, 'PAGE_UP':0x4B, 'DELETE':0x4C, 'END':0x4D, 
+  'PAGE_DOWN':0x4E, 'RIGHT':0x4F, 'LEFT':0x50, 'DOWN':0x51, 'UP':0x52, 'GUI':0xE3, 'WINDOWS':0xE3,
+  'SHIFT':0xE1, 'ALT':0xE2, 'CTRL':0xE0
+};
+
+const ASCII_MAP = {
+  'a':0x04,'b':0x05,'c':0x06,'d':0x07,'e':0x08,'f':0x09,'g':0x0A,'h':0x0B,'i':0x0C,'j':0x0D,
+  'k':0x0E,'l':0x0F,'m':0x10,'n':0x11,'o':0x12,'p':0x13,'q':0x14,'r':0x15,'s':0x16,'t':0x17,
+  'u':0x18,'v':0x19,'w':0x1A,'x':0x1B,'y':0x1C,'z':0x1D,'1':0x1E,'2':0x1F,'3':0x20,'4':0x21,
+  '5':0x22,'6':0x23,'7':0x24,'8':0x25,'9':0x26,'0':0x27,' ':0x2C
+};
+
+function compileDucky(script) {
+  const bytes = [];
+  const lines = script.split('\n');
+  for (let line of lines) {
+    line = line.trim();
+    if (!line || line.startsWith("REM") || line.startsWith("//") || line.startsWith("#")) continue;
+    
+    const parts = line.split(' ');
+    const cmd = parts[0].toUpperCase();
+    const args = parts.slice(1).join(' ');
+
+    if (cmd === 'DELAY') {
+      const ms = parseInt(args);
+      bytes.push(0x01, (ms >> 8) & 0xFF, ms & 0xFF);
+    } 
+    else if (cmd === 'STRING') {
+      bytes.push(0x02, args.length);
+      for (let i = 0; i < args.length; i++) bytes.push(args.charCodeAt(i));
+    }
+    else if (cmd === 'GUI' || cmd === 'WINDOWS') {
+      let key = 0;
+      if (args && ASCII_MAP[args.toLowerCase()]) key = ASCII_MAP[args.toLowerCase()]; 
+      else if (args && KEY_MAP[args.toUpperCase()]) key = KEY_MAP[args.toUpperCase()];
+      bytes.push(0x02, 0x08, key); 
+    }
+    else if (KEY_MAP[cmd]) { bytes.push(0x02, 0x00, KEY_MAP[cmd]); }
+  }
+  bytes.push(0x00); 
+  return bytes;
+}
+
+// --- PATCHER & FLASHER ---
+function patchHex(hexString, payloadData) {
+  const buffer = new Uint8Array(8192).fill(0xFF); 
+  const lines = hexString.split('\n');
+  for (let line of lines) {
+    line = line.trim();
+    if (line[0] !== ':') continue;
+    const len = parseInt(line.substr(1, 2), 16);
+    const addr = parseInt(line.substr(3, 4), 16);
+    const type = parseInt(line.substr(7, 2), 16);
+    if (type === 0) { 
+      for (let i = 0; i < len; i++) { buffer[addr + i] = parseInt(line.substr(9 + i * 2, 2), 16); }
+    }
+  }
+
+  let magicIdx = -1;
+  for (let i = 0; i < buffer.length - 4; i++) {
+    if (buffer[i]===0xCA && buffer[i+1]===0xFE && buffer[i+2]===0xBA && buffer[i+3]===0xBE) {
+      magicIdx = i; break;
+    }
+  }
+
+  if (magicIdx === -1) throw new Error("TEMPLATE CORRUPTED: MAGIC HEADER MISSING");
+
+  let dataStart = magicIdx + 10; 
+  let currentOffset = 10;
+  
+  const totalSize = 10 + payloadData.c1.length + payloadData.c2.length + payloadData.c3.length;
+  if (totalSize > 1024) throw new Error("PAYLOAD OVERFLOW: " + totalSize + "/1024 BYTES");
+
+  // Inject C1
+  buffer[magicIdx + 4] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 5] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c1) buffer[magicIdx + dataStart++] = b;
+  currentOffset += payloadData.c1.length;
+  
+  // Inject C2
+  buffer[magicIdx + 6] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 7] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c2) buffer[magicIdx + dataStart++] = b;
+  currentOffset += payloadData.c2.length;
+  
+  // Inject C3
+  buffer[magicIdx + 8] = (currentOffset >> 8) & 0xFF;
+  buffer[magicIdx + 9] = (currentOffset) & 0xFF;
+  for(let b of payloadData.c3) buffer[magicIdx + dataStart++] = b;
+  
+  return buffer;
+}
+
+document.getElementById('burnBtn').addEventListener('click', async () => {
+  const hw = document.getElementById('hwModel').value;
+  
+  try {
+    if (!navigator.usb) throw new Error("WEBUSB NOT DETECTED. USE CHROME/EDGE.");
+    
+    logMsg("COMPILING DUCKYSCRIPTS...");
+    
+    const payloads = {
+      c1: compileDucky(document.getElementById('c1').value),
+      c2: compileDucky(document.getElementById('c2').value),
+      c3: compileDucky(document.getElementById('c3').value)
+    };
+    
+    logMsg("FETCHING FIRMWARE TEMPLATE: " + hw);
+    const resp = await fetch(hw);
+    if (!resp.ok) throw new Error("TEMPLATE MISSING: " + hw);
+    const hexText = await resp.text();
+    
+    logMsg("PATCHING HEX BINARY...");
+    const firmBuffer = patchHex(hexText, payloads);
+    
+    logMsg("SEARCHING FOR DIGISPARK... (PLUG IT IN NOW)");
+    const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
+    
+    const client = new Micronucleus(device);
+    
+    logMsg("DEVICE FOUND. FLASHING FIRMWARE...", 'warn');
+    await client.upload(firmBuffer);
+    
+    logMsg("FLASH COMPLETE. DISENGAGE DEVICE.", 'success');
+    
+  } catch (e) {
+    logMsg("FATAL ERROR: " + e.message, 'error');
+  }
+});
+</script>
+</body>
+</html>
