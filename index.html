@@ -131,6 +131,10 @@ function patchHex(hexString, payloadData) {
   let dataStart = magicIdx + 10; // 4 magic + 6 offsets
   let currentOffset = 10;
   
+  // Calculate total size first
+  const totalSize = 10 + payloadData.c1.length + payloadData.c2.length + payloadData.c3.length;
+  if (totalSize > 1024) throw new Error("PAYLOAD TOO LARGE (" + totalSize + "/1024 BYTES)");
+
   // Write Payload 1
   buffer[magicIdx + 4] = (currentOffset >> 8) & 0xFF;
   buffer[magicIdx + 5] = (currentOffset) & 0xFF;
