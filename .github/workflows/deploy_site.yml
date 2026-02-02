@@ -17,11 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Prepare Interface
+        run: touch .nojekyll
+
       - name: Deploy Interface
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
           exclude_assets: '**.ino,**.h,**.yml,README.md,dist,build'
-          keep_files: true # CRITICAL: Do not delete the firmware folder
+          keep_files: true
           commit_message: "Update: Web Interface"
