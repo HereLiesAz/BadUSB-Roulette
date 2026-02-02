@@ -2,10 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BADUSB ROULETTE [SELF-HOSTED]</title>
+  <title>BADUSB ROULETTE [MANUAL OVERRIDE]</title>
   
-  <script src="firmware/micronucleus.js"></script>
-
   <style>
     :root {
       --bg-color: #050505;
@@ -38,36 +36,32 @@
       position: relative;
     }
 
-    h1 {
-      font-size: 2rem;
-      letter-spacing: 5px;
-      margin: 0;
-      text-transform: uppercase;
-    }
+    h1 { font-size: 2rem; letter-spacing: 5px; margin: 0; text-transform: uppercase; }
 
     #driverStatus {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 0.7rem;
-      border: 1px solid var(--term-dim);
-      padding: 5px;
-      color: var(--term-dim);
+      position: absolute; top: 10px; right: 10px;
+      font-size: 0.7rem; border: 1px solid var(--term-dim);
+      padding: 5px; color: var(--term-dim);
     }
     .status-ok { color: var(--term-green) !important; border-color: var(--term-green) !important; }
     .status-err { color: var(--alert-red) !important; border-color: var(--alert-red) !important; }
 
-    .subtitle { font-size: 0.8rem; color: var(--term-dim); margin-top: 5px; }
-
-    #winWarning {
-      display: none;
-      width: 95%; max-width: 800px;
-      border: 1px solid var(--alert-red);
-      background: rgba(50, 0, 0, 0.5);
+    /* MANUAL DRIVER ZONE */
+    #manualDriverZone {
+      display: none; /* Hidden unless error */
+      background: rgba(50, 0, 0, 0.3);
+      border: 1px dashed var(--alert-red);
+      padding: 10px;
       margin-bottom: 20px;
-      padding: 10px; font-size: 0.8rem; color: var(--alert-red);
+      text-align: center;
+      width: 90%;
+      max-width: 600px;
     }
-    #winWarning a { color: #fff; text-decoration: underline; }
+    .driver-btn {
+      background: var(--alert-red); color: #000;
+      border: none; padding: 5px 10px; cursor: pointer;
+      font-weight: bold; font-family: inherit; margin-top: 5px;
+    }
 
     .armory-controls {
       display: flex; gap: 20px; margin-bottom: 20px;
@@ -144,17 +138,45 @@
     .log-warn { color: #ff0; }
     .log-debug { color: #555; }
   </style>
+
+  <script>
+    function onDriverLoad() {
+      if (typeof Micronucleus !== 'undefined') {
+        document.getElementById('driverStatus').innerText = "DRIVER: ACTIVE";
+        document.getElementById('driverStatus').className = "status-ok";
+        document.getElementById('manualDriverZone').style.display = 'none';
+        console.log("Micronucleus Loaded.");
+      }
+    }
+    function onDriverError() {
+      document.getElementById('driverStatus').innerText = "DRIVER: MISSING";
+      document.getElementById('driverStatus').className = "status-err";
+      document.getElementById('manualDriverZone').style.display = 'block';
+      console.error("Micronucleus Failed to Load.");
+    }
+  </script>
+  
+  <script src="firmware/micronucleus.js" onload="onDriverLoad()" onerror="onDriverError()"></script>
 </head>
 <body>
 
   <header>
     <h1>BadUSB Roulette</h1>
     <div class="subtitle">/// UNIFIED PAYLOAD SYSTEM ///</div>
-    <div id="driverStatus">DRIVER: LOADING...</div>
+    <div id="driverStatus">DRIVER: CHECKING...</div>
   </header>
 
-  <div id="winWarning">
-    <strong>WINDOWS DETECTED:</strong> WebUSB requires the <strong>WinUSB</strong> driver via <a href="https://zadig.akeo.ie/" target="_blank">Zadig</a>.
+  <div id="manualDriverZone">
+    <div style="color: var(--alert-red); font-weight: bold; margin-bottom: 5px;">
+      ⚠️ AUTOMATIC DRIVER LOAD FAILED
+    </div>
+    <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">
+      The server is slow or blocking the file. Upload <strong>micronucleus.js</strong> manually.
+    </div>
+    <label class="driver-btn">
+      LOAD DRIVER FROM DISK
+      <input type="file" id="manualDriverFile" accept=".js" style="display:none;">
+    </label>
   </div>
 
   <div class="armory-controls">
@@ -165,7 +187,7 @@
     </select>
     
     <label class="file-upload">
-      [ MANUAL LOAD .HEX ]
+      [ MANUAL HEX ]
       <input type="file" id="customHex" accept=".hex">
     </label>
   </div>
@@ -219,25 +241,34 @@
   </div>
 
 <script>
-// --- STARTUP CHECKS ---
-window.onload = function() {
-  const statusEl = document.getElementById('driverStatus');
-  if (typeof Micronucleus !== 'undefined') {
-    statusEl.innerText = "DRIVER: ACTIVE";
-    statusEl.className = "status-ok";
-    logMsg("[SYS] Micronucleus Driver Loaded (Local).", 'success');
-  } else {
-    statusEl.innerText = "DRIVER: MISSING";
-    statusEl.className = "status-err";
-    logMsg("[FATAL] Driver NOT found. It may still be deploying.", 'error');
-    logMsg("[HINT] Wait 60s for 'Deploy Unified System' to finish.", 'warn');
-  }
+// --- MANUAL DRIVER HANDLER ---
+document.getElementById('manualDriverFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      // Inject Script
+      const script = document.createElement('script');
+      script.text = evt.target.result;
+      document.head.appendChild(script);
 
-  if (navigator.userAgent.indexOf("Win") != -1) {
-    document.getElementById('winWarning').style.display = 'block';
-  }
-};
+      if (typeof Micronucleus !== 'undefined') {
+        onDriverLoad();
+        logMsg("[SYS] Driver Manual Override Successful.", 'success');
+      } else {
+        throw new Error("Script loaded but Micronucleus object not found.");
+      }
+    } catch(err) {
+      logMsg("[FATAL] Invalid JS file: " + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+});
 
+
+// --- UTILS ---
 function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
   const line = document.createElement('div');
@@ -298,7 +329,7 @@ function compileDucky(script) {
   return bytes;
 }
 
-// --- HEX PATCHER (THE SURGEON) ---
+// --- HEX PATCHER ---
 function patchHex(hexString, payloadData) {
   const buffer = new Uint8Array(8192).fill(0xFF); 
   const lines = hexString.split('\n');
@@ -325,10 +356,7 @@ function patchHex(hexString, payloadData) {
   function inject(payload, label, offH_idx, offL_idx) {
     buffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     buffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
-    if (payload.length <= 1) { 
-      logMsg(`[SURGERY] ${label}: Empty (Skipping injection)`, 'debug');
-      return; 
-    }
+    if (payload.length <= 1) return; 
     if (magicIdx + currentOffset + payload.length >= buffer.length) throw new Error("PAYLOAD TOO LARGE");
     logMsg(`[SURGERY] Injecting ${label}: ${payload.length} bytes at offset +${currentOffset}`, 'debug');
     let writePtr = magicIdx + currentOffset;
@@ -402,7 +430,7 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
     
     // STARTUP CHECK: Ensure Driver Loaded
     if (typeof Micronucleus === 'undefined') {
-       throw new Error("Driver Failed to Load. Check Console/Network.");
+       throw new Error("Driver Failed to Load. Use Manual Injection.");
     }
 
     logMsg("--- STARTING SEQUENCE ---");
