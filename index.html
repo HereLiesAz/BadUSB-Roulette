@@ -487,7 +487,7 @@ function patchHex(hexString, payloadData) {
   return buffer;
 }
 
-/* --- AMMUNITION LOGIC --- */
+/* --- TELEMETRY & AMMUNITION LOGIC --- */
 
 // 1. Manual Override
 let customHexData = null;
@@ -499,7 +499,35 @@ document.getElementById('customHex').addEventListener('change', async (e) => {
   }
 });
 
-// 2. Remote Fetcher
+// 2. Build Status Checker
+async function checkBuildStatus(user, repo) {
+  try {
+    const api = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=1`;
+    logMsg(`CHECKING FACTORY STATUS...`, 'warn');
+    const resp = await fetch(api);
+    if (resp.status === 403) {
+      logMsg("API LIMIT REACHED. CANNOT CHECK STATUS.", 'error');
+      return;
+    }
+    if (!resp.ok) return;
+    
+    const data = await resp.json();
+    if (data.workflow_runs && data.workflow_runs.length > 0) {
+      const run = data.workflow_runs[0];
+      if (run.status === 'in_progress' || run.status === 'queued') {
+        logMsg(`FACTORY BUSY: ${run.name} IS ${run.status.toUpperCase()}...`, 'warn');
+      } else if (run.status === 'completed' && run.conclusion === 'success') {
+        logMsg(`FACTORY FINISHED RECENTLY. TRY RELOADING PAGE.`, 'success');
+      } else {
+         logMsg(`LAST BUILD FAILED. CHECK GITHUB ACTIONS.`, 'error');
+      }
+    }
+  } catch (e) {
+    console.log("Telemetry failed", e);
+  }
+}
+
+// 3. Remote Fetcher
 async function fetchTemplate(filename) {
   // A. Check for Manual Override
   if (customHexData) {
@@ -508,28 +536,32 @@ async function fetchTemplate(filename) {
   }
 
   const url = new URL(filename, document.baseURI).href;
-  console.log("Fetching Local: " + url);
   
   try {
     let resp = await fetch(filename);
     if (resp.ok) return await resp.text();
     throw new Error(resp.status);
   } catch (e) {
-    logMsg(`LOCAL FETCH FAILED (${e.message})... TRYING REMOTE...`, 'warn');
+    logMsg(`LOCAL FETCH FAILED (${e.message})...`, 'warn');
     
-    // B. Construct Remote URL
-    // Allow query param override: ?repo=User/Repo
-    const params = new URLSearchParams(window.location.search);
-    let repoBase = "hereliesaz.github.io/BadUSB-Roulette"; // DEFAULT
+    // Auto-detect User/Repo from URL if hosted on GitHub Pages
+    let user = 'hereliesaz';
+    let repo = 'BadUSB-Roulette';
     
-    if (params.has('repo')) {
-       // Expects format: User/Repo
-       const r = params.get('repo');
-       repoBase = `${r.split('/')[0]}.github.io/${r.split('/')[1]}`;
+    // Parse github.io URL: user.github.io/repo
+    const hostname = window.location.hostname;
+    const pathname = window.location.pathname;
+    if (hostname.includes('github.io')) {
+       user = hostname.split('.')[0];
+       repo = pathname.split('/')[1] || repo;
     }
 
-    const remoteUrl = `https://${repoBase}/${filename}`;
-    logMsg("FETCHING REMOTE: " + remoteUrl);
+    // Check status API before failing
+    await checkBuildStatus(user, repo);
+
+    // Try Remote Fallback
+    const remoteUrl = `https://${user}.github.io/${repo}/${filename}`;
+    logMsg("TRYING REMOTE: " + remoteUrl);
     
     let resp = await fetch(remoteUrl);
     if (!resp.ok) throw new Error(`REMOTE FAILED: ${resp.status}`);
