@@ -303,6 +303,19 @@ document.getElementById('manualDriverFile').addEventListener('change', (e) => {
   reader.readAsText(file);
 });
 
+// --- PAYLOAD MUTATOR ---
+function mutate(selectEl, targetId) {
+  const ta = document.getElementById(targetId);
+  const mode = selectEl.value;
+  if(mode === 'WIN') {
+    ta.value = "// WINDOWS PAYLOAD\nDELAY 1000\nGUI r\nDELAY 200\nSTRING notepad\nENTER\nDELAY 500\nSTRING Hello from BadUSB!\nENTER";
+  } else if (mode === 'MAC') {
+    ta.value = "// MAC PAYLOAD\nDELAY 1000\nGUI SPACE\nDELAY 200\nSTRING Terminal\nENTER\nDELAY 500\nSTRING echo Hello World\nENTER";
+  } else if (mode === 'LINUX') {
+    ta.value = "// LINUX PAYLOAD\nDELAY 1000\nGUI\nDELAY 200\nSTRING terminal\nENTER\nDELAY 500\nSTRING echo 'Hello World'\nENTER";
+  }
+}
+
 // --- UTILS ---
 function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
@@ -434,6 +447,23 @@ function patchHex(hexString, payloadData) {
   
   return fullBuffer.slice(0, alignedSize);
 }
+
+// --- ACQUIRE FIRMWARE ---
+async function acquireFirmware(filename) {
+  const response = await fetch(`firmware/${filename}`);
+  if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+  return await response.text();
+}
+
+// --- MANUAL HEX HANDLER ---
+document.getElementById('customHex').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    // We just override the acquireFirmware function temporarily for this session
+    acquireFirmware = async () => text;
+    logMsg(`[SYS] Custom Firmware Loaded: ${file.name}`, 'warn');
+});
 
 document.getElementById('burnBtn').addEventListener('click', async () => {
   const hw = document.getElementById('hwModel').value;
