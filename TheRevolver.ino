@@ -23,6 +23,18 @@ const uint8_t PAYLOAD_STORAGE[1024] PROGMEM __attribute__((used)) = {
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00 
 };
+
+// ==========================================
+//      FORWARD DECLARATIONS
+// ==========================================
+void set_led(uint8_t state);
+bool has_payload(byte chamber);
+void run_vm(uint16_t ptr);
+void signal_flash();
+void signal_arm();
+void signal_fire();
+void signal_done();
+
 // ==========================================
 //      HARDWARE ABSTRACTION
 // ==========================================
@@ -32,10 +44,10 @@ void set_led(uint8_t state) {
     // (Managed by specific signal functions below)
   #else
     // Single/Universal Mode: Blast BOTH pins.
-// Covers Model A (Pin 1) and Model B (Pin 0).
+    // Covers Model A (Pin 1) and Model B (Pin 0).
     digitalWrite(0, state);
     digitalWrite(1, state);
-#endif
+  #endif
 }
 
 // ==========================================
@@ -44,10 +56,10 @@ void set_led(uint8_t state) {
 
 bool has_payload(byte chamber) {
   if (chamber >= TOTAL_CHAMBERS) return false;
-uint16_t offset_loc = 4 + (chamber * 2);
+  uint16_t offset_loc = 4 + (chamber * 2);
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
-uint16_t ptr = (off_h << 8) | off_l;
+  uint16_t ptr = (off_h << 8) | off_l;
   // Pointer must be non-zero and within the storage limit
   return (ptr > 0 && ptr < 1024);
 }
@@ -56,64 +68,64 @@ void setup() {
   // 1. PANIC BLINK (Hardware Agnostic)
   pinMode(0, OUTPUT);
   pinMode(1, OUTPUT);
-for(int k=0; k<5; k++) {
+  for(int k=0; k<5; k++) {
     digitalWrite(0, HIGH);
     digitalWrite(1, HIGH);
     DigiKeyboard.delay(100);
     digitalWrite(0, LOW);
     digitalWrite(1, LOW);
     DigiKeyboard.delay(100);
-}
+  }
 
   // 2. STATE RECOVERY
   // Pin modes are already OUTPUT from panic blink.
   // Ensure off state.
-digitalWrite(0, LOW);
+  digitalWrite(0, LOW);
   digitalWrite(1, LOW);
 
   // 3. RUSSIAN ROULETTE LOGIC
   byte mode = eeprom_read_byte((const uint8_t*)0);
-if (mode >= TOTAL_CHAMBERS) mode = 0;
+  if (mode >= TOTAL_CHAMBERS) mode = 0;
 
   // A. Stale Memory Check (Skip empties)
   // Logic: Scan forward until we find a payload or loop back to start
   byte check = mode;
-bool found = false;
+  bool found = false;
   for (int i = 0; i < TOTAL_CHAMBERS; i++) {
     if (has_payload(check)) {
         found = true;
-mode = check;
+        mode = check;
         break;
     }
     check = (check + 1) % TOTAL_CHAMBERS;
-}
+  }
 
   // FAILSAFE: If ALL chambers are empty, die SOS.
-if (!found) {
+  if (!found) {
     while(1) {
       set_led(HIGH);
       DigiKeyboard.delay(100);
       set_led(LOW);
       DigiKeyboard.delay(100);
-}
+    }
   }
 
   // B. Calculate & Write NEXT Step Immediately
   // If user unplugs during ARMING, this value persists.
-byte next = (mode + 1) % TOTAL_CHAMBERS;
+  byte next = (mode + 1) % TOTAL_CHAMBERS;
   // Ensure the next one we queue is also valid (so we don't boot into a dead chamber)
   for (int i = 0; i < TOTAL_CHAMBERS; i++) {
     if (has_payload(next)) break;
-next = (next + 1) % TOTAL_CHAMBERS;
+    next = (next + 1) % TOTAL_CHAMBERS;
   }
   eeprom_update_byte((uint8_t*)0, next);
 
   // 4. IDENTIFICATION PHASE
   DigiKeyboard.delay(1000);
-for (int i = 0; i <= mode; i++) {
+  for (int i = 0; i <= mode; i++) {
     signal_flash();
     DigiKeyboard.delay(300);
-}
+  }
 
   // 5. ARMING PHASE
   signal_arm(); 
@@ -121,14 +133,14 @@ for (int i = 0; i <= mode; i++) {
 
   // 6. FIRE PHASE
   signal_fire();
-// EXECUTE PAYLOAD
+  // EXECUTE PAYLOAD
   uint16_t offset_loc = 4 + (mode * 2);
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
-uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
+  uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
   uint16_t payload_addr = (off_h << 8) | off_l;
-if (payload_addr > 0 && payload_addr < 1024) {
+  if (payload_addr > 0 && payload_addr < 1024) {
      run_vm(payload_addr);
-}
+  }
 
   // 7. COMPLETION PHASE
   signal_done();
@@ -147,19 +159,78 @@ void run_vm(uint16_t ptr) {
     uint8_t opcode = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
     
     // Safety: 0xFF is erased flash memory. Treat as end.
-if (opcode == OP_END || opcode == 0xFF) break;
+    if (opcode == OP_END || opcode == 0xFF) break;
     
     else if (opcode == OP_DELAY) {
       uint8_t h = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-uint8_t l = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      uint8_t l = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
       uint16_t t = (h << 8) | l;
       DigiKeyboard.delay(t);
-}
+    }
     
     else if (opcode == OP_KEY) {
       uint8_t mod = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-uint8_t key = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      uint8_t key = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
       DigiKeyboard.sendKeyStroke(key, mod);
     }
     
-    else if (opcode ==
+    else if (opcode == OP_PRINT || opcode == OP_PRINTLN) {
+      uint8_t len = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      for (int i=0; i<len; i++) {
+        char c = (char)pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+        DigiKeyboard.print(c);
+      }
+      if (opcode == OP_PRINTLN) DigiKeyboard.print("\n");
+    }
+    
+    // Safety Break (End of Storage)
+    if (ptr >= 1024) break;
+  }
+  // CLEANUP: Ensure no keys are left stuck down
+  DigiKeyboard.sendKeyStroke(0);
+}
+
+// ==========================================
+//      SIGNALING HELPERS
+// ==========================================
+
+void signal_flash() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_GREEN, HIGH);
+    DigiKeyboard.delay(200);
+    digitalWrite(PIN_GREEN, LOW);
+  #else
+    set_led(HIGH);
+    DigiKeyboard.delay(200);
+    set_led(LOW);
+  #endif
+}
+
+void signal_arm() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_RED, HIGH);
+  #else
+    set_led(HIGH);
+  #endif
+}
+
+void signal_fire() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_RED, LOW);
+  #else
+    set_led(LOW);
+  #endif
+}
+
+void signal_done() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_GREEN, HIGH);
+  #else
+    for(int i=0; i<5; i++){
+       set_led(HIGH);
+       DigiKeyboard.delay(50);
+       set_led(LOW);
+       DigiKeyboard.delay(50);
+    }
+  #endif
+}
