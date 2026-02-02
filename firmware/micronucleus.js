@@ -1,5 +1,5 @@
 /*
-  Micronucleus WebUSB Driver (Robust Timing Edition)
+  Micronucleus WebUSB Driver (Paranoid Safety Edition)
   Target: ATtiny85 (Digispark) running Micronucleus V2.x Bootloader
 */
 
@@ -19,11 +19,11 @@
       if (this.device.configuration === null) {
         await this.device.selectConfiguration(1);
       }
-      // Micronucleus uses Interface 0
+      // Attempt to claim interface, ignore if already claimed
       try {
         await this.device.claimInterface(0);
       } catch(e) {
-        console.warn("Interface already claimed or unavailable (ignoring).");
+        console.warn("[Driver] Interface claim warning (ignoring):", e);
       }
     }
 
@@ -33,10 +33,10 @@
       const len = firmwareData.length;
       const totalPages = Math.ceil(len / this.PAGE_SIZE);
       
-      // Safety check for ATtiny85 (approx 6KB usable)
+      // Strict safety check for ATtiny85 (Approx 6KB user space)
       if (totalPages > 96) throw new Error("Firmware too large for device memory.");
 
-      console.log(`[Micronucleus] Flashing ${len} bytes (${totalPages} pages)...`);
+      console.log(`[Driver] Flashing ${len} bytes (${totalPages} pages)...`);
 
       // 1. ERASE & WRITE LOOP
       for (let i = 0; i < totalPages; i++) {
@@ -47,17 +47,13 @@
         const chunk = firmwareData.slice(start, end);
         pageBuffer.set(chunk);
 
-        // TIMING IS CRITICAL HERE
-        // The first page write triggers a block erase which takes time.
-        // Standard Write: ~4-5ms
-        // Erase + Write: ~50-100ms
-        // We use conservative values to prevent "Transfer Error"
-        const delayMs = (i === 0) ? 250 : 20; 
+        // --- PARANOID TIMING ---
+        // Page 0 write triggers the initial Erase Cycle.
+        // We give it 500ms to ensure the chip is absolutely ready before we talk to it again.
+        // Subsequent pages get 50ms (10x standard requirement).
+        const delayMs = (i === 0) ? 500 : 50; 
 
         // SEND: Control Transfer to Device
-        // request: 1 (Write)
-        // value: Start Address
-        // index: 0
         await this.device.controlTransferOut({
           requestType: 'vendor',
           recipient: 'device',
@@ -66,14 +62,13 @@
           index: 0
         }, pageBuffer);
 
-        // SLEEP: Give the tiny CPU time to write to flash
+        // WAIT: Hold the bus idle while the chip works
         await new Promise(resolve => setTimeout(resolve, delayMs));
         
-        // Optional: Log progress every 10 pages
-        if (i % 10 === 0) console.log(`[Micronucleus] Wrote page ${i+1}/${totalPages}`);
+        if (i % 5 === 0) console.log(`[Driver] Wrote page ${i+1}/${totalPages}`);
       }
 
-      console.log("[Micronucleus] Write Complete. Resetting...");
+      console.log("[Driver] Write Complete. Resetting...");
       
       // 2. RESET / RUN
       try {
@@ -85,9 +80,8 @@
           index: 0
         });
       } catch (e) {
-        // The device resets immediately, often causing a 'NetworkError' or disconnect in JS.
-        // This is actually success.
-        console.log("[Micronucleus] Device reset (Success).");
+        // A network error here is actually success (device disconnected to reboot)
+        console.log("[Driver] Device reset confirmed.");
       }
     }
   }
@@ -95,6 +89,6 @@
   // Expose to Global Window
   if (typeof window !== 'undefined') {
     window.Micronucleus = Micronucleus;
-    console.log("Micronucleus Driver Loaded (Robust Timing).");
+    console.log("Micronucleus Driver Loaded (Paranoid Edition).");
   }
 })();
