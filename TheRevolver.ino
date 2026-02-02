@@ -1,108 +1,205 @@
-name: Deploy System (Unified)
+/*
+   PROJECT: BadUSB Revolver (Web-Flasher Edition)
+   HARDWARE: ATtiny85 (Digispark)
+ */
 
-on:
-  push:
-    branches: [ "main", "master" ]
-    paths-ignore:
-      - 'firmware/**' # CRITICAL: Prevent infinite build loops
-  workflow_dispatch:
+#include <avr/eeprom.h>
+#include "DigiKeyboard.h"
+#include "roulette_cfg.h"
 
-permissions:
-  contents: write
+// ==========================================
+//      VIRTUAL MACHINE DEFINITIONS
+// ==========================================
+#define OP_END      0x00
+#define OP_DELAY    0x01
+#define OP_KEY      0x02
+#define OP_PRINT    0x03
+#define OP_PRINTLN  0x04
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.head_ref }}
+// RESERVE 1KB FOR PAYLOADS
+// Header Structure (10 Bytes):
+// [0-3] MAGIC (CAFEBABE)
+// [4-5] Chamber 1 Offset
+// [6-7] Chamber 2 Offset
+// [8-9] Chamber 3 Offset
+const uint8_t PAYLOAD_STORAGE[1024] PROGMEM = {
+  0xCA, 0xFE, 0xBA, 0xBE, 
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00 
+};
 
-      # --- SETUP ---
-      - name: Setup Arduino CLI
-        uses: arduino/setup-arduino-cli@v1
+// ==========================================
+//      LOGIC ENGINE
+// ==========================================
 
-      - name: Install Digispark Core
-        run: |
-          arduino-cli config init
-          arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/digistump/arduino-boards-index/master/package_digistump_index.json
-          arduino-cli core update-index
-          arduino-cli core install digistump:avr
+// Helper: Check if a chamber has valid data (Offset != 0)
+bool has_payload(byte chamber) {
+  if (chamber >= TOTAL_CHAMBERS) return false;
 
-      # --- BUILD ---
-      - name: Compile Firmware
-        run: |
-          # 1. Clean Inventory
-          mkdir -p firmware
-          rm -f firmware/*.hex
-          echo "Inventory Cleared."
+  // Calculate offset location in the header
+  // Chamber 0 -> Index 4
+  // Chamber 1 -> Index 6
+  // Chamber 2 -> Index 8
+  uint16_t offset_loc = 4 + (chamber * 2);
+  
+  uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
+  uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
+  uint16_t ptr = (off_h << 8) | off_l;
+  
+  return (ptr != 0);
+}
 
-          # 2. Compile SINGLE LED
-          echo ">>> COMPILING SINGLE LED..."
-          mkdir -p build/single_env/Sketch
-          cp TheRevolver.ino build/single_env/Sketch/Sketch.ino
-          cp roulette_cfg.h build/single_env/Sketch/roulette_cfg.h
-          
-          # Patch Config: Set DUAL_LED_MODE to 0
-          sed -i 's/#define DUAL_LED_MODE 1/#define DUAL_LED_MODE 0/' build/single_env/Sketch/roulette_cfg.h
-          
-          # Compile
-          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/single build/single_env/Sketch
-          
-          # Extract
-          if [ -f "./build/single/Sketch.ino.hex" ]; then
-            cp "./build/single/Sketch.ino.hex" "./firmware/roulette_single.hex"
-          else
-            echo "CRITICAL: Single Hex Failed to Build"
-            exit 1
-          fi
+void setup() {
+  // 1. PIN SETUP
+  #if DUAL_LED_MODE == 1
+    pinMode(PIN_GREEN, OUTPUT);
+    pinMode(PIN_RED, OUTPUT);
+    digitalWrite(PIN_GREEN, LOW);
+    digitalWrite(PIN_RED, LOW);
+  #else
+    pinMode(PIN_SINGLE, OUTPUT);
+    digitalWrite(PIN_SINGLE, LOW);
+  #endif
 
-          # 3. Compile DUAL LED
-          echo ">>> COMPILING DUAL LED..."
-          mkdir -p build/dual_env/Sketch
-          cp TheRevolver.ino build/dual_env/Sketch/Sketch.ino
-          cp roulette_cfg.h build/dual_env/Sketch/roulette_cfg.h
-          
-          # Patch Config: Set DUAL_LED_MODE to 1
-          sed -i 's/#define DUAL_LED_MODE 0/#define DUAL_LED_MODE 1/' build/dual_env/Sketch/roulette_cfg.h
-          
-          # Compile
-          arduino-cli compile --fqbn digistump:avr:digispark-tiny --output-dir ./build/dual build/dual_env/Sketch
-          
-          # Extract
-          if [ -f "./build/dual/Sketch.ino.hex" ]; then
-            cp "./build/dual/Sketch.ino.hex" "./firmware/roulette_dual.hex"
-          else
-            echo "CRITICAL: Dual Hex Failed to Build"
-            exit 1
-          fi
+  // 2. SMART ROTATION LOGIC
+  byte mode = eeprom_read_byte((const uint8_t*)0);
+  if (mode >= TOTAL_CHAMBERS) mode = 0;
 
-      # --- COMMIT BACK ---
-      - name: Commit Firmware to Repo
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          
-          # Stage the new firmware files
-          git add firmware/*.hex
-          
-          # Check for changes. If changed, commit and push.
-          # [skip ci] is crucial to prevent the commit from triggering another build.
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Reload: Updated Firmware Artifacts [skip ci]" && git push)
+  // A. Stale Memory Check
+  // If the current mode points to an empty chamber, scan forward immediately.
+  for (int i = 0; i < TOTAL_CHAMBERS; i++) {
+    if (has_payload(mode)) break;
+    mode = (mode + 1) % TOTAL_CHAMBERS;
+  }
 
-      # --- DEPLOY SITE ---
-      - name: Stage & Deploy Website
-        run: |
-          mkdir -p public
-          cp index.html public/index.html
-          # Copy the firmware folder (which now exists in the repo) to the deploy folder
-          cp -r firmware public/firmware
-          touch public/.nojekyll
+  // FAILSAFE: If ALL chambers are empty, die here.
+  if (!has_payload(mode)) {
+    while(1) {
+      signal_arm(); DigiKeyboard.delay(100);
+      signal_fire(); DigiKeyboard.delay(100);
+    }
+  }
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          commit_message: "Deploy: Unified Release"
+  // B. Calculate NEXT Step (Skip empty chambers for next boot)
+  byte next = (mode + 1) % TOTAL_CHAMBERS;
+  for (int i = 0; i < TOTAL_CHAMBERS; i++) {
+    if (has_payload(next)) break;
+    next = (next + 1) % TOTAL_CHAMBERS;
+  }
+  
+  // Write the future immediately
+  eeprom_update_byte((uint8_t*)0, next);
+
+  // 3. IDENTIFICATION PHASE
+  DigiKeyboard.delay(1000); 
+
+  // Flash the count (1-based index for humans)
+  for (int i = 0; i <= mode; i++) {
+    signal_flash();
+    DigiKeyboard.delay(300);
+  }
+
+  // 4. ARMING PHASE
+  signal_arm(); 
+  DigiKeyboard.delay(SAFE_WINDOW);
+
+  // 5. FIRE PHASE
+  signal_fire();
+  
+  // EXECUTE PAYLOAD
+  uint16_t offset_loc = 4 + (mode * 2);
+  uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
+  uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
+  uint16_t payload_addr = (off_h << 8) | off_l;
+  
+  if (payload_addr > 0 && payload_addr < 1024) {
+     run_vm(payload_addr);
+  }
+
+  // 6. COMPLETION PHASE
+  signal_done();
+  for (;;) {} 
+}
+
+void loop() {}
+
+// ==========================================
+//      BYTECODE INTERPRETER
+// ==========================================
+void run_vm(uint16_t ptr) {
+  while(true) {
+    uint8_t opcode = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+    
+    if (opcode == OP_END) break;
+    
+    else if (opcode == OP_DELAY) {
+      uint8_t h = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      uint8_t l = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      uint16_t t = (h << 8) | l;
+      DigiKeyboard.delay(t);
+    }
+    
+    else if (opcode == OP_KEY) {
+      uint8_t mod = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      uint8_t key = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      DigiKeyboard.sendKeyStroke(key, mod);
+    }
+    
+    else if (opcode == OP_PRINT || opcode == OP_PRINTLN) {
+      uint8_t len = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      for (int i=0; i<len; i++) {
+        char c = (char)pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+        DigiKeyboard.print(c);
+      }
+      if (opcode == OP_PRINTLN) DigiKeyboard.print("\n");
+    }
+    
+    if (ptr >= 1024) break;
+  }
+}
+
+// ==========================================
+//      SIGNALING HELPERS
+// ==========================================
+
+void signal_flash() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_GREEN, HIGH);
+    DigiKeyboard.delay(200);
+    digitalWrite(PIN_GREEN, LOW);
+  #else
+    digitalWrite(PIN_SINGLE, HIGH);
+    DigiKeyboard.delay(200);
+    digitalWrite(PIN_SINGLE, LOW);
+  #endif
+}
+
+void signal_arm() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_RED, HIGH);
+  #else
+    digitalWrite(PIN_SINGLE, HIGH);
+  #endif
+}
+
+void signal_fire() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_RED, LOW);
+  #else
+    digitalWrite(PIN_SINGLE, LOW);
+  #endif
+}
+
+void signal_done() {
+  #if DUAL_LED_MODE == 1
+    digitalWrite(PIN_GREEN, HIGH);
+  #else
+    for(int i=0; i<10; i++){
+       digitalWrite(PIN_SINGLE, HIGH);
+       DigiKeyboard.delay(50);
+       digitalWrite(PIN_SINGLE, LOW);
+       DigiKeyboard.delay(50);
+    }
+    digitalWrite(PIN_SINGLE, HIGH);
+  #endif
+}
