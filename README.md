@@ -9,12 +9,18 @@ Or leave it in to fire that bullet. <br>
 Just like Russian Roulette, except you control the bullet.
 Which, I guess, makes it normal Roulette... the kind we all necessarily play when a revolver is involved.
 
+## Documentation
+
+*   [**User Guide**](docs/USER_GUIDE.md): Detailed instructions, including driver setup (Windows/Linux) and troubleshooting.
+*   [**System Architecture**](docs/ARCHITECTURE.md): Technical overview of the WebUSB frontend and Firmware VM.
+*   [**Bytecode Specification**](docs/BYTECODE.md): Details on the custom bytecode format used by the VM.
+
 ## How It Actually Works
 1. **The Repo:** Hosts a website (`index.html`) and two compiled firmware templates.
 2. **The Browser:** You load DuckyScripts into the website.
 3. **The Flash:** The website compiles your scripts to bytecode, patches the firmware binary in memory, and flashes it to your DigiSpark via WebUSB.
 
-## Instructions
+## Quick Start
 
 1. Visit the deployed site: `https://HereLiesAz.github.io/BadUSB-Roulette/`
 2. **Connect** your DigiSpark ATTiny85.
@@ -26,11 +32,7 @@ Which, I guess, makes it normal Roulette... the kind we all necessarily play whe
 5. The site will compile the scripts, inject them into the hex file, and burn it to the device.
 
 ### ⚠️ IMPORTANT: Windows Users
-WebUSB requires the **WinUSB** driver. The standard DigiSpark driver (`libusb-win32`) will **NOT** work with the website.
-1. Download **Zadig**.
-2. Plug in the DigiSpark.
-3. In Zadig, select `Digispark Bootloader` (Options -> List All Devices).
-4. Replace the driver with **WinUSB**.
+WebUSB requires the **WinUSB** driver. The standard DigiSpark driver (`libusb-win32`) will **NOT** work with the website. See the [User Guide](docs/USER_GUIDE.md) for details.
 
 ### How to use it:
 1. Plug the device into a target.
