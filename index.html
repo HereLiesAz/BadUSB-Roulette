@@ -4,22 +4,38 @@
   <meta charset="UTF-8">
   <title>BADUSB ROULETTE [SAFETY LOCK]</title>
   
+  <!--
+      Micronucleus Driver
+      This script provides the WebUSB interface to talk to the DigiSpark's Micronucleus bootloader.
+      It exposes a `Micronucleus` class used in the flashing process.
+  -->
   <script src="firmware/micronucleus.js"></script>
 
   <style>
+    /*
+       ==========================================
+       GLOBAL THEME & VARIABLES
+       ==========================================
+       Defines the "Hacker Terminal" aesthetic with high-contrast green/black/red palette.
+    */
     :root {
-      --bg-color: #050505;
-      --term-green: #00ff41;
-      --term-dim: #008f11;
-      --alert-red: #ff0000;
-      --panel-bg: #0a0a0a;
-      --border-color: #333;
+      --bg-color: #050505;      /* Deep black background */
+      --term-green: #00ff41;    /* Classic terminal green */
+      --term-dim: #008f11;      /* Dimmer green for secondary elements */
+      --alert-red: #ff0000;     /* Bright red for warnings and critical errors */
+      --panel-bg: #0a0a0a;      /* Slightly lighter background for UI panels */
+      --border-color: #333;     /* Dark gray for subtle borders */
     }
 
+    /*
+       ==========================================
+       BASE STYLES
+       ==========================================
+    */
     body {
       background-color: var(--bg-color);
       color: var(--term-green);
-      font-family: 'Consolas', 'Monaco', monospace;
+      font-family: 'Consolas', 'Monaco', monospace; /* Monospaced font for code look */
       margin: 0; padding: 0;
       display: flex; flex-direction: column; align-items: center;
       min-height: 100vh; overflow-x: hidden;
@@ -33,6 +49,12 @@
 
     h1 { font-size: 2rem; letter-spacing: 5px; margin: 0; text-transform: uppercase; }
 
+    /*
+       ==========================================
+       DRIVER STATUS INDICATOR
+       ==========================================
+       Shows whether the micronucleus.js driver is loaded correctly.
+    */
     #driverStatus {
       position: absolute; top: 10px; right: 10px;
       font-size: 0.7rem; border: 1px solid var(--term-dim);
@@ -41,6 +63,12 @@
     .status-ok { color: var(--term-green) !important; border-color: var(--term-green) !important; }
     .status-err { color: var(--alert-red) !important; border-color: var(--alert-red) !important; }
 
+    /*
+       ==========================================
+       MANUAL DRIVER LOAD ZONE
+       ==========================================
+       Visible only if automatic driver loading fails. Allows user to upload .js driver manually.
+    */
     #manualDriverZone {
       display: none; background: rgba(50, 0, 0, 0.3);
       border: 1px dashed var(--alert-red); padding: 10px;
@@ -52,6 +80,12 @@
       font-family: inherit; margin-top: 5px;
     }
 
+    /*
+       ==========================================
+       OS WARNINGS
+       ==========================================
+       Dynamic warnings for Windows (driver issues) and Linux (permissions).
+    */
     .os-warning {
       display: none; width: 95%; max-width: 800px;
       border: 1px solid var(--alert-red); background: rgba(50, 0, 0, 0.8);
@@ -68,6 +102,11 @@
       font-size: 0.8rem; color: #ccc; white-space: pre-wrap; word-break: break-all;
     }
 
+    /*
+       ==========================================
+       CONTROLS & INPUTS
+       ==========================================
+    */
     .armory-controls {
       display: flex; gap: 20px; margin-bottom: 20px;
       align-items: center; flex-wrap: wrap; justify-content: center;
@@ -95,6 +134,12 @@
     }
     #genInoBtn:hover { border-color: var(--term-green); color: var(--term-green); background: #000; }
 
+    /*
+       ==========================================
+       CHAMBER GRID (PAYLOAD EDITORS)
+       ==========================================
+       Three columns for the three payload slots.
+    */
     .chamber-grid {
       display: flex; gap: 15px; width: 95%; max-width: 1600px;
       flex: 1; margin-bottom: 30px;
@@ -130,6 +175,12 @@
       display: flex; flex-direction: column; align-items: center; gap: 10px;
     }
 
+    /*
+       ==========================================
+       SERIAL LOG CONSOLE
+       ==========================================
+       Displays status messages and WebUSB progress.
+    */
     .console-wrapper {
       width: 95%; max-width: 1600px;
       background: #000; border: 1px solid #333; margin-bottom: 40px;
@@ -150,6 +201,10 @@
   </style>
 
   <script>
+    /**
+     * @brief Callback when the Micronucleus driver loads successfully.
+     * Updates the UI to show active status.
+     */
     function onDriverLoad() {
       if (typeof Micronucleus !== 'undefined') {
         document.getElementById('driverStatus').innerText = "DRIVER: ACTIVE";
@@ -158,6 +213,11 @@
         console.log("Micronucleus Loaded.");
       }
     }
+
+    /**
+     * @brief Callback when the Micronucleus driver fails to load.
+     * Shows the manual upload zone.
+     */
     function onDriverError() {
       document.getElementById('driverStatus').innerText = "DRIVER: MISSING";
       document.getElementById('driverStatus').className = "status-err";
@@ -165,6 +225,7 @@
     }
   </script>
   
+  <!-- Attempt to load driver automatically -->
   <script src="firmware/micronucleus.js" onload="onDriverLoad()" onerror="onDriverError()"></script>
 </head>
 <body>
@@ -263,79 +324,158 @@
   </div>
 
 <script>
-// --- EMBEDDED TEMPLATES (ESCAPE POD) ---
+// ==========================================
+//      EMBEDDED TEMPLATES (ESCAPE POD)
+// ==========================================
+// These string literals contain the source code for the "Escape Pod" feature.
+// They are identical to the documented "roulette_cfg.h" and "TheRevolver.ino".
+// The JS generator replaces the payload placeholders with the user's compiled bytecode.
+
 const TEMPLATE_CFG = `
 #ifndef ROULETTE_CFG_H
 #define ROULETTE_CFG_H
+/**
+ * @file roulette_cfg.h
+ * @brief Configuration constants for the BadUSB-Roulette firmware.
+ *
+ * This file controls the hardware behavior, pin mappings, and game mechanics.
+ * It is included by the main firmware file (TheRevolver.ino).
+ */
 
 // --- HARDWARE CONFIG ---
-// DUAL_LED_MODE 0 = Universal Single (Blinks P0 & P1)
-// DUAL_LED_MODE 1 = Dual Mode (Green P0, Red P1)
+
+/**
+ * @brief DUAL_LED_MODE determines the hardware revision.
+ *
+ * 0: Universal Single Mode (Default).
+ *    - Uses both Pin 0 and Pin 1 for all LED signals.
+ *    - Compatible with Digispark Model A and Model B.
+ *
+ * 1: Dual LED Mode (Custom Hardware).
+ *    - Uses specific pins for Green (Safe) and Red (Danger) signals.
+ */
 #define DUAL_LED_MODE 0 
 
 // --- PIN MAPPING ---
-// In Universal Mode (0), these defines are ignored by the wrapper.
-// In Dual Mode (1), specific pins are used.
-#define PIN_GREEN  0
-#define PIN_RED    1
+
+/**
+ * @brief Pin definitions for Dual LED Mode.
+ *
+ * If DUAL_LED_MODE is 0, these values are ignored by the wrapper function \`set_led\`,
+ * which instead toggles both Pin 0 and Pin 1 simultaneously.
+ */
+#define PIN_GREEN  0  // Pin connected to the Green LED (Safe/Idle)
+#define PIN_RED    1  // Pin connected to the Red LED (Armed/Fire)
 
 // --- GAME PHYSICS ---
+
+/**
+ * @brief The number of available payload slots ("chambers").
+ *
+ * The firmware will cycle through these slots using EEPROM to store the state.
+ * The payload storage area must be large enough to hold offsets for all chambers.
+ * (Header size = 4 + (TOTAL_CHAMBERS * 2) bytes).
+ */
 #define TOTAL_CHAMBERS 3
+
+/**
+ * @brief The duration (in milliseconds) the device waits before executing the payload.
+ *
+ * During this window, the LED will be solid (Armed).
+ * If the user unplugs the device during this window, the payload is skipped.
+ * If the user waits, the payload executes ("Fires").
+ */
 #define SAFE_WINDOW 3000
 
-#endif
+#endif // ROULETTE_CFG_H
 `;
 
 const TEMPLATE_INO = `
-/*
-   PROJECT: BadUSB Revolver (Universal Edition)
-   HARDWARE: ATtiny85 (Digispark Rev A & B Compatible)
+/**
+ * @file TheRevolver.ino
+ * @brief Main firmware for the BadUSB-Roulette device.
+ *
+ * This firmware implements a Virtual Machine (VM) that executes custom bytecode payloads.
+ * It manages the "Russian Roulette" game logic, cycling through payloads stored in Flash memory
+ * and executing them based on user interaction (plug/unplug/wait).
+ *
+ * Supported Hardware: Digispark ATTiny85 (Rev A & B)
  */
 
-#include <avr/eeprom.h>
-#include "DigiKeyboard.h"
-#include "roulette_cfg.h"
+#include <avr/eeprom.h>     // Required for reading/writing non-volatile memory (EEPROM).
+#include "DigiKeyboard.h"   // Library for USB HID Keyboard emulation.
+#include "roulette_cfg.h"   // Configuration file for hardware pins and game settings.
 
 // ==========================================
 //      VIRTUAL MACHINE DEFINITIONS
 // ==========================================
-#define OP_END      0x00
-#define OP_DELAY    0x01
-#define OP_KEY      0x02
-#define OP_PRINT    0x03
-#define OP_PRINTLN  0x04
 
-// RESERVE 1KB FOR PAYLOADS
-// __attribute__((used)) prevents the linker from stripping this symbol
+// Opcode Definitions for the custom bytecode interpreter.
+// These byte values correspond to specific actions the VM can take.
+#define OP_END      0x00    // Terminates execution of the current payload.
+#define OP_DELAY    0x01    // Pauses execution for a specified duration (followed by 2-byte ms).
+#define OP_KEY      0x02    // Sends a keystroke (followed by Modifier byte + Key byte).
+#define OP_PRINT    0x03    // Types a string (followed by Length byte + characters).
+#define OP_PRINTLN  0x04    // Types a string followed by ENTER (Length + chars).
+
+// ==========================================
+//      PAYLOAD STORAGE
+// ==========================================
+
+/**
+ * @brief Reserves 1KB of Flash memory for storing payloads.
+ *
+ * We use \`PROGMEM\` to store this array in Flash (Program Memory) rather than RAM,
+ * as the ATTiny85 has very limited RAM (512 bytes).
+ *
+ * \`__attribute__((used))\` tells the compiler/linker to keep this array in the binary
+ * even if it appears unused in the code (which prevents optimization removal).
+ *
+ * Structure:
+ * - Bytes 0-3: Magic Header (0xCA, 0xFE, 0xBA, 0xBE) to verify valid firmware patching.
+ * - Bytes 4-9: 16-bit offsets for Chamber 1, 2, and 3 pointers.
+ * - Bytes 10+: Actual bytecode data for the payloads.
+ */
 const uint8_t PAYLOAD_STORAGE[1024] PROGMEM __attribute__((used)) = {
-  0xCA, 0xFE, 0xBA, 0xBE, 
-  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00 
+  0xCA, 0xFE, 0xBA, 0xBE, // Magic Header: CAFEBABE
+  0x00, 0x00, 0x00, 0x00, // Placeholders for Chamber 1 & 2 Offsets
+  0x00, 0x00              // Placeholder for Chamber 3 Offset
+  // The rest is zero-initialized by the compiler.
 };
 
 // ==========================================
 //      FORWARD DECLARATIONS
 // ==========================================
-void set_led(uint8_t state);
-bool has_payload(byte chamber);
-void run_vm(uint16_t ptr);
-void signal_flash();
-void signal_arm();
-void signal_fire();
-void signal_done();
+// Declare functions before use to satisfy C++ compiler requirements.
+void set_led(uint8_t state);    // Controls the onboard LED(s).
+bool has_payload(byte chamber); // Checks if a specific chamber has a valid payload.
+void run_vm(uint16_t ptr);      // Executes the bytecode starting at a memory address.
+void signal_flash();            // Blinks the LED to indicate chamber selection.
+void signal_arm();              // Turns the LED on to indicate the "Armed" state.
+void signal_fire();             // Turns the LED off to indicate execution ("Fire").
+void signal_done();             // Blinks rapidly to indicate completion.
 
 // ==========================================
 //      HARDWARE ABSTRACTION
 // ==========================================
+
+/**
+ * @brief Controls the device's LED(s) based on the configuration mode.
+ *
+ * @param state HIGH (on) or LOW (off).
+ */
 void set_led(uint8_t state) {
   #if DUAL_LED_MODE == 1
-    // Dual Mode Failsafe: Use RED PIN 1 for generic blinks
-    // This ensures the Infinite Loop of Death is visible.
-    digitalWrite(PIN_RED, state);
+    // DUAL_LED_MODE 1: Dual LED Configuration.
+    // In this mode, we do not control pins generically here.
+    // Instead, specific signal functions (signal_arm, signal_fire) manage
+    // the RED (Danger) and GREEN (Safe) pins directly.
   #else
-    // Single/Universal Mode: Blast BOTH pins.
-    digitalWrite(0, state);
-    digitalWrite(1, state);
+    // DUAL_LED_MODE 0: Universal Single LED Mode.
+    // Digispark Rev A uses Pin 1 for LED. Rev B uses Pin 0.
+    // To be universal, we toggle BOTH pins simultaneously.
+    digitalWrite(0, state); // Toggle Pin 0 (Model B LED)
+    digitalWrite(1, state); // Toggle Pin 1 (Model A LED)
   #endif
 }
 
@@ -343,139 +483,224 @@ void set_led(uint8_t state) {
 //      LOGIC ENGINE
 // ==========================================
 
+/**
+ * @brief Checks if a specific chamber contains a valid payload.
+ *
+ * It reads the offset from the PAYLOAD_STORAGE header and verifies it points
+ * to a valid location within the storage array.
+ *
+ * @param chamber The index of the chamber to check (0 to TOTAL_CHAMBERS-1).
+ * @return true if a valid payload exists, false otherwise.
+ */
 bool has_payload(byte chamber) {
+  // Safety check: Ensure chamber index is within bounds.
   if (chamber >= TOTAL_CHAMBERS) return false;
+
+  // Calculate the memory location of the offset for this chamber.
+  // Header is 4 bytes. Each offset is 2 bytes.
+  // Location = 4 + (chamber_index * 2)
   uint16_t offset_loc = 4 + (chamber * 2);
+
+  // Read the 16-bit offset from PROGMEM (Flash memory).
+  // Offsets are stored Big-Endian (High Byte, Low Byte).
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
+
+  // Combine bytes into a 16-bit pointer.
   uint16_t ptr = (off_h << 8) | off_l;
-  // Pointer must be non-zero and within the storage limit
+
+  // Validate the pointer:
+  // 1. Must be > 0 (0 indicates empty).
+  // 2. Must be < 1024 (must point within the storage array).
   return (ptr > 0 && ptr < 1024);
 }
 
+/**
+ * @brief Standard Arduino Setup function. Runs once at boot.
+ *
+ * This function contains the entire "Game Loop" logic. Since the device acts as a
+ * single-shot payload deliverer, we do not use the main loop().
+ */
 void setup() {
-  // 1. PANIC BLINK (Hardware Agnostic)
+  // 1. PANIC BLINK (Hardware Agnostic Initialization)
+  // Initialize pins 0 and 1 as outputs immediately.
   pinMode(0, OUTPUT);
   pinMode(1, OUTPUT);
+
+  // Rapidly blink 5 times at startup to indicate power-on / bootloader exit.
   for(int k=0; k<5; k++) {
-    digitalWrite(0, HIGH);
+    digitalWrite(0, HIGH); // LED ON
     digitalWrite(1, HIGH);
-    DigiKeyboard.delay(100);
-    digitalWrite(0, LOW);
+    DigiKeyboard.delay(100); // Wait 100ms
+    digitalWrite(0, LOW);  // LED OFF
     digitalWrite(1, LOW);
-    DigiKeyboard.delay(100);
+    DigiKeyboard.delay(100); // Wait 100ms
   }
 
   // 2. STATE RECOVERY
-  // Pin modes are already OUTPUT from panic blink.
-  // Ensure off state.
+  // Ensure LEDs are off after the panic blink.
   digitalWrite(0, LOW);
   digitalWrite(1, LOW);
 
   // 3. RUSSIAN ROULETTE LOGIC
+
+  // Read the last saved state (current chamber index) from EEPROM address 0.
   byte mode = eeprom_read_byte((const uint8_t*)0);
+
+  // Sanity check: If EEPROM value is garbage (e.g., 255 from factory), reset to 0.
   if (mode >= TOTAL_CHAMBERS) mode = 0;
 
-  // A. Stale Memory Check (Skip empties)
-  // Logic: Scan forward until we find a payload or loop back to start
+  // A. Stale Memory Check (Skip Empty Chambers)
+  // We need to find the next *valid* chamber starting from the saved 'mode'.
   byte check = mode;
   bool found = false;
+
+  // Loop through all chambers to find one with a payload.
   for (int i = 0; i < TOTAL_CHAMBERS; i++) {
     if (has_payload(check)) {
-        found = true;
-        mode = check;
+        found = true;   // Valid payload found.
+        mode = check;   // Update current mode to this valid chamber.
         break;
     }
+    // Move to the next chamber, wrapping around if necessary.
     check = (check + 1) % TOTAL_CHAMBERS;
   }
 
-  // FAILSAFE: If ALL chambers are empty, die SOS.
+  // FAILSAFE: If NO chambers have payloads (empty device), enter an infinite SOS loop.
+  // This prevents the device from doing nothing and confusing the user.
   if (!found) {
     while(1) {
-      set_led(HIGH);
+      set_led(HIGH);        // LED ON
       DigiKeyboard.delay(100);
-      set_led(LOW);
+      set_led(LOW);         // LED OFF
       DigiKeyboard.delay(100);
     }
   }
 
-  // B. Calculate & Write NEXT Step Immediately
-  // If user unplugs during ARMING, this value persists.
+  // B. Calculate & Write NEXT Step Immediately (Advance the Barrel)
+  // We update the state in EEPROM *before* executing.
+  // This ensures that if the user unplugs the device now (during the "Safe Window"),
+  // the device will boot into the *next* chamber next time.
   byte next = (mode + 1) % TOTAL_CHAMBERS;
-  // Ensure the next one we queue is also valid (so we don't boot into a dead chamber)
+
+  // Ensure the *next* state we write is also a valid chamber (skip empties for next boot too).
   for (int i = 0; i < TOTAL_CHAMBERS; i++) {
-    if (has_payload(next)) break;
+    if (has_payload(next)) break; // Found a valid next chamber.
     next = (next + 1) % TOTAL_CHAMBERS;
   }
+
+  // Save the next chamber index to EEPROM.
   eeprom_update_byte((uint8_t*)0, next);
 
   // 4. IDENTIFICATION PHASE
+  // Wait 1 second before identifying, to let the user settle the device.
   DigiKeyboard.delay(1000);
+
+  // Blink the LED 'mode + 1' times to tell the user which chamber is active.
+  // (e.g., Chamber 0 blinks 1 time, Chamber 1 blinks 2 times).
   for (int i = 0; i <= mode; i++) {
-    signal_flash();
-    DigiKeyboard.delay(300);
+    signal_flash();       // Blink ON
+    DigiKeyboard.delay(300); // Wait between blinks
   }
 
-  // 5. ARMING PHASE
+  // 5. ARMING PHASE (The Safe Window)
+  // Turn the LED on solid (Red if dual mode) to warn the user execution is imminent.
   signal_arm(); 
+
+  // Wait for the SAFE_WINDOW duration (e.g., 3 seconds).
+  // This gives the user time to unplug the device if they don't want to "fire" this payload.
   DigiKeyboard.delay(SAFE_WINDOW);
 
-  // 6. FIRE PHASE
-  signal_fire();
-  // EXECUTE PAYLOAD
+  // 6. FIRE PHASE (Execution)
+  // If execution reaches here, the user did not unplug.
+
+  signal_fire(); // Turn off LED (or signal firing).
+
+  // Retrieve the pointer to the payload again.
   uint16_t offset_loc = 4 + (mode * 2);
   uint8_t off_h = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc]);
   uint8_t off_l = pgm_read_byte(&PAYLOAD_STORAGE[offset_loc + 1]);
   uint16_t payload_addr = (off_h << 8) | off_l;
+
+  // Double-check validity before running VM.
   if (payload_addr > 0 && payload_addr < 1024) {
-     run_vm(payload_addr);
+     run_vm(payload_addr); // Start the Virtual Machine.
   }
 
   // 7. COMPLETION PHASE
+  // Signal that the payload has finished executing.
   signal_done();
+
+  // Enter an infinite loop to keep the USB connection alive but do nothing else.
+  // DigiKeyboard.delay is used to keep the USB interrupt poll active.
   for (;;) {
-    DigiKeyboard.delay(1000); // Keep USB alive
+    DigiKeyboard.delay(1000);
   } 
 }
 
+/**
+ * @brief Standard Arduino Loop.
+ *
+ * Unused in this architecture because setup() handles the single-pass logic and never returns.
+ */
 void loop() {}
 
 // ==========================================
-//      BYTECODE INTERPRETER
+//      BYTECODE INTERPRETER (VM)
 // ==========================================
+
+/**
+ * @brief Interprets and executes the bytecode payload.
+ *
+ * @param ptr The starting address of the bytecode in PROGMEM (Flash).
+ */
 void run_vm(uint16_t ptr) {
   while(true) {
+    // Fetch the next opcode from Flash memory.
     uint8_t opcode = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
     
-    // Safety: 0xFF is erased flash memory. Treat as end.
+    // Check for Termination Opcodes.
+    // OP_END (0x00) is the standard end.
+    // 0xFF is the default value of erased flash memory (safety catch).
     if (opcode == OP_END || opcode == 0xFF) break;
     
+    // --- OP_DELAY (0x01) ---
+    // Format: [0x01] [High Byte] [Low Byte]
     else if (opcode == OP_DELAY) {
-      uint8_t h = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-      uint8_t l = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-      uint16_t t = (h << 8) | l;
-      DigiKeyboard.delay(t);
+      uint8_t h = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]); // Read High Byte
+      uint8_t l = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]); // Read Low Byte
+      uint16_t t = (h << 8) | l; // Combine into 16-bit milliseconds
+      DigiKeyboard.delay(t);     // Execute delay
     }
     
+    // --- OP_KEY (0x02) ---
+    // Format: [0x02] [Modifiers] [Key Code]
     else if (opcode == OP_KEY) {
-      uint8_t mod = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-      uint8_t key = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-      DigiKeyboard.sendKeyStroke(key, mod);
+      uint8_t mod = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]); // Read Modifiers
+      uint8_t key = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]); // Read Key Code
+      DigiKeyboard.sendKeyStroke(key, mod); // Send keystroke via HID
     }
     
+    // --- OP_PRINT (0x03) & OP_PRINTLN (0x04) ---
+    // Format: [Opcode] [Length] [Char 1] [Char 2] ...
     else if (opcode == OP_PRINT || opcode == OP_PRINTLN) {
-      uint8_t len = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
+      uint8_t len = pgm_read_byte(&PAYLOAD_STORAGE[ptr++]); // Read String Length
+
+      // Loop through the string data
       for (int i=0; i<len; i++) {
-        char c = (char)pgm_read_byte(&PAYLOAD_STORAGE[ptr++]);
-        DigiKeyboard.print(c);
+        char c = (char)pgm_read_byte(&PAYLOAD_STORAGE[ptr++]); // Read character
+        DigiKeyboard.print(c); // Type character via HID
       }
+
+      // If it's PRINTLN, append a newline (Enter).
       if (opcode == OP_PRINTLN) DigiKeyboard.print("\\n");
     }
     
-    // Safety Break (End of Storage)
+    // Safety Break: Prevent reading beyond the 1KB storage limit.
     if (ptr >= 1024) break;
   }
-  // CLEANUP: Ensure no keys are left stuck down
+
+  // CLEANUP: Ensure no keys are left logically "pressed" after execution.
   DigiKeyboard.sendKeyStroke(0);
 }
 
@@ -483,38 +708,67 @@ void run_vm(uint16_t ptr) {
 //      SIGNALING HELPERS
 // ==========================================
 
+/**
+ * @brief Blinks the LED to indicate presence/identification.
+ *
+ * Flashes GREEN in Dual Mode, or standard blink in Universal Mode.
+ */
 void signal_flash() {
   #if DUAL_LED_MODE == 1
+    // Dual Mode: Flash Green LED.
     digitalWrite(PIN_GREEN, HIGH);
     DigiKeyboard.delay(200);
     digitalWrite(PIN_GREEN, LOW);
   #else
+    // Universal Mode: Use generic set_led.
     set_led(HIGH);
     DigiKeyboard.delay(200);
     set_led(LOW);
   #endif
 }
 
+/**
+ * @brief Sets the LED to the "Armed" state (Solid On).
+ *
+ * Turns on RED LED in Dual Mode to indicate danger.
+ */
 void signal_arm() {
   #if DUAL_LED_MODE == 1
+    // Dual Mode: Turn on Red LED.
     digitalWrite(PIN_RED, HIGH);
   #else
+    // Universal Mode: Turn on standard LEDs.
     set_led(HIGH);
   #endif
 }
 
+/**
+ * @brief Sets the LED to the "Fire" state (Off).
+ *
+ * Turns off the RED LED to indicate the safe window has passed and execution is starting.
+ */
 void signal_fire() {
   #if DUAL_LED_MODE == 1
+    // Dual Mode: Turn off Red LED.
     digitalWrite(PIN_RED, LOW);
   #else
+    // Universal Mode: Turn off standard LEDs.
     set_led(LOW);
   #endif
 }
 
+/**
+ * @brief Signals completion of the payload execution.
+ *
+ * Dual Mode: Turns on Green LED solid.
+ * Universal Mode: Rapid blink sequence.
+ */
 void signal_done() {
   #if DUAL_LED_MODE == 1
+    // Dual Mode: Solid Green indicates success/done.
     digitalWrite(PIN_GREEN, HIGH);
   #else
+    // Universal Mode: Rapid 5-blink sequence.
     for(int i=0; i<5; i++){
        set_led(HIGH);
        DigiKeyboard.delay(50);
@@ -525,7 +779,11 @@ void signal_done() {
 }
 `;
 
-// --- HANDLERS ---
+// ==========================================
+//      EVENT HANDLERS
+// ==========================================
+
+// Handle manual driver upload
 document.getElementById('manualDriverFile').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -534,11 +792,17 @@ document.getElementById('manualDriverFile').addEventListener('change', (e) => {
     const script = document.createElement('script');
     script.text = evt.target.result;
     document.head.appendChild(script);
+    // Check if the uploaded driver defines Micronucleus
     setTimeout(() => { if (typeof Micronucleus !== 'undefined') onDriverLoad(); }, 100);
   };
   reader.readAsText(file);
 });
 
+/**
+ * @brief Populates the text area with a sample payload based on the selected OS.
+ * @param {HTMLSelectElement} selectEl - The dropdown element.
+ * @param {string} targetId - The ID of the textarea to update.
+ */
 function mutate(selectEl, targetId) {
   const ta = document.getElementById(targetId);
   const mode = selectEl.value;
@@ -547,16 +811,25 @@ function mutate(selectEl, targetId) {
   else if (mode === 'LINUX') ta.value = "// LINUX PAYLOAD\nDELAY 1000\nGUI\nDELAY 200\nSTRING terminal\nENTER\nDELAY 500\nSTRING echo 'RM -RF /'\nENTER";
 }
 
+/**
+ * @brief Logs messages to the on-screen console.
+ * @param {string} msg - The message to log.
+ * @param {string} type - 'normal', 'error', or 'success'.
+ */
 function logMsg(msg, type='normal') {
   const logEl = document.getElementById('log');
   const line = document.createElement('div');
   line.className = 'log-line ' + (type === 'error' ? 'log-err' : type === 'success' ? 'log-ok' : 'log-debug');
   line.innerText = `[${new Date().toLocaleTimeString('en-US',{hour12:false})}] ${msg}`;
   logEl.appendChild(line);
-  logEl.scrollTop = logEl.scrollHeight;
+  logEl.scrollTop = logEl.scrollHeight; // Auto-scroll
 }
 
-// --- COMPILER ---
+// ==========================================
+//      DUCKYSCRIPT COMPILER
+// ==========================================
+
+// Map of Key Names to HID Usage IDs
 const KEY_MAP = {
   'ENTER':0x28, 'ESC':0x29, 'BACKSPACE':0x2A, 'TAB':0x2B, 'SPACE':0x2C, 'MINUS':0x2D, 
   'EQUAL':0x2E, 'LEFT_BRACE':0x2F, 'RIGHT_BRACE':0x30, 'BACKSLASH':0x31, 'SEMICOLON':0x33, 
@@ -567,8 +840,14 @@ const KEY_MAP = {
   'PAGE_DOWN':0x4E, 'RIGHT':0x4F, 'LEFT':0x50, 'DOWN':0x51, 'UP':0x52, 'GUI':0xE3, 'WINDOWS':0xE3
 };
 
+// Map of Modifier Names to Bitmasks
 const MOD_BITMASKS = { 'CTRL': 0x01, 'SHIFT': 0x02, 'ALT': 0x04, 'GUI': 0x08, 'COMMAND': 0x08 };
 
+/**
+ * @brief Compiles DuckyScript text into custom bytecode.
+ * @param {string} script - The DuckyScript source code.
+ * @return {number[]} An array of bytes representing the compiled payload.
+ */
 function compileDucky(script) {
   const bytes = [];
   
@@ -606,7 +885,7 @@ function compileDucky(script) {
     const args = parts.slice(1).join(' ');
     let currentCmdBytes = [];
 
-    // 1. REPEAT
+    // 1. REPEAT: Repeats the last command N times.
     if (cmd === 'REPEAT') {
         const count = parseInt(args);
         if (lastCmd && !isNaN(count)) {
@@ -614,30 +893,31 @@ function compileDucky(script) {
                 bytes.push(...lastCmd);
             }
         }
-        continue; // Don't update lastCmd
+        continue; // Don't update lastCmd for REPEAT itself
     }
     
-    // 2. DELAY
+    // 2. DELAY: [OP_DELAY] [MS_HIGH] [MS_LOW]
     else if (cmd === 'DELAY') {
       const ms = parseInt(args);
       currentCmdBytes = [0x01, (ms >> 8) & 0xFF, ms & 0xFF];
     }
     
-    // 3. DEFAULT_DELAY
+    // 3. DEFAULT_DELAY: Sets the delay injected between lines.
     else if (cmd === 'DEFAULT_DELAY' || cmd === 'DEFAULTDELAY') {
         defaultDelay = parseInt(args);
         continue;
     }
 
-    // 4. STRING
+    // 4. STRING: [OP_PRINT] [LEN] [CHARS...]
     else if (cmd === 'STRING') {
+      // Chunk strings into 255-byte blocks (max size for length byte)
       for (let i = 0; i < args.length; i += 255) {
         const chunk = args.substring(i, Math.min(i + 255, args.length));
         currentCmdBytes.push(0x03, chunk.length); 
         for (let c = 0; c < chunk.length; c++) currentCmdBytes.push(chunk.charCodeAt(c));
       }
     } 
-    // 5. MODIFIER + KEY
+    // 5. MODIFIER + KEY: [OP_KEY] [MOD_MASK] [KEY_CODE]
     else if (MOD_BITMASKS[cmd] && parts.length > 1) {
       const keyStr = parts[1].toUpperCase();
       let keyByte = 0;
@@ -646,7 +926,7 @@ function compileDucky(script) {
       
       if (keyByte > 0) currentCmdBytes = [0x02, MOD_BITMASKS[cmd], keyByte];
     }
-    // 6. SINGLE KEY
+    // 6. SINGLE KEY: [OP_KEY] [0x00] [KEY_CODE]
     else if (KEY_MAP[cmd]) { 
       currentCmdBytes = [0x02, 0x00, KEY_MAP[cmd]]; 
     }
@@ -660,20 +940,33 @@ function compileDucky(script) {
   return bytes;
 }
 
+/**
+ * @brief Helper to convert ASCII char to HID Usage ID (Rough Approximation).
+ */
 function getAsciiKey(char) {
     const code = char.toLowerCase().charCodeAt(0);
-    if (code >= 97 && code <= 122) return code - 93; 
-    if (code >= 49 && code <= 57) return code - 19; 
-    if (code === 48) return 39; 
+    if (code >= 97 && code <= 122) return code - 93; // a-z
+    if (code >= 49 && code <= 57) return code - 19; // 1-9
+    if (code === 48) return 39; // 0
     return 0;
 }
 
-// --- HEX PATCHER ---
+// ==========================================
+//      INTEL HEX PATCHER
+// ==========================================
+
+/**
+ * @brief Injects bytecode into a pre-compiled Intel Hex firmware image.
+ *
+ * @param {string} hexString - The original .hex file content.
+ * @param {Object} payloadData - Object containing bytecode arrays for c1, c2, c3.
+ * @return {Uint8Array} The patched binary firmware ready for flashing.
+ */
 function patchHex(hexString, payloadData) {
   const fullBuffer = new Uint8Array(8192).fill(0xFF); 
   let maxAddress = 0;
 
-  // Parse Hex
+  // 1. Parse Hex File
   const lines = hexString.split('\n');
   for (let line of lines) {
     line = line.trim();
@@ -681,7 +974,7 @@ function patchHex(hexString, payloadData) {
     const len = parseInt(line.substr(1, 2), 16);
     const addr = parseInt(line.substr(3, 4), 16);
     const type = parseInt(line.substr(7, 2), 16);
-    if (type === 0) { 
+    if (type === 0) { // Data Record
       for (let i = 0; i < len; i++) { 
         fullBuffer[addr + i] = parseInt(line.substr(9 + i * 2, 2), 16); 
       }
@@ -689,7 +982,7 @@ function patchHex(hexString, payloadData) {
     }
   }
 
-  // Find Header (CAFEBABE)
+  // 2. Find Magic Header (CAFEBABE) to locate PAYLOAD_STORAGE
   let magicIdx = -1;
   for (let i = 0; i < maxAddress; i++) {
     if (fullBuffer[i]===0xCA && fullBuffer[i+1]===0xFE && fullBuffer[i+2]===0xBA && fullBuffer[i+3]===0xBE) {
@@ -698,18 +991,23 @@ function patchHex(hexString, payloadData) {
   }
   if (magicIdx === -1) throw new Error("CRITICAL: Hex Header 'CAFEBABE' Missing. Firmware Incompatible.");
 
-  let currentOffset = 10;
+  // 3. Inject Payloads
+  let currentOffset = 10; // Start after header (4) + 3 offsets (6) = 10
+
   function inject(payload, offH_idx, offL_idx) {
     if (payload.length <= 1) {
+        // Empty payload: Write 0x0000 offset
         fullBuffer[magicIdx + offH_idx] = 0x00;
         fullBuffer[magicIdx + offL_idx] = 0x00;
         return;
     }
+    // Write Offset (Big Endian)
     fullBuffer[magicIdx + offH_idx] = (currentOffset >> 8) & 0xFF;
     fullBuffer[magicIdx + offL_idx] = (currentOffset) & 0xFF;
     
     if (currentOffset + payload.length > 1024) throw new Error("PAYLOAD OVERFLOW: 1KB LIMIT EXCEEDED");
     
+    // Write Payload Data
     let writePtr = magicIdx + currentOffset;
     for(let b of payload) fullBuffer[writePtr++] = b;
     if (writePtr > maxAddress) maxAddress = writePtr;
@@ -721,29 +1019,37 @@ function patchHex(hexString, payloadData) {
   inject(payloadData.c2, 6, 7);
   inject(payloadData.c3, 8, 9);
   
+  // Return buffer aligned to 64 bytes (Micronucleus page size)
   return fullBuffer.slice(0, Math.ceil(maxAddress / 64) * 64);
 }
 
-// --- FLASHER ---
+// ==========================================
+//      FLASHER (WEBUSB)
+// ==========================================
+
 document.getElementById('burnBtn').addEventListener('click', async () => {
   const hw = document.getElementById('hwModel').value;
   try {
     if (!navigator.usb) throw new Error("WebUSB not supported");
     if (typeof Micronucleus === 'undefined') throw new Error("Driver not loaded.");
     
+    // 1. Compile all payloads
     const payloads = {
       c1: compileDucky(document.getElementById('c1').value),
       c2: compileDucky(document.getElementById('c2').value),
       c3: compileDucky(document.getElementById('c3').value)
     };
     
+    // 2. Fetch base firmware
     const response = await fetch(`firmware/${hw}`);
     if(!response.ok) throw new Error("Hex file missing");
     const hexText = await response.text();
     
+    // 3. Patch firmware
     const firmBuffer = patchHex(hexText, payloads);
     logMsg(`[SYS] Flashing ${firmBuffer.length} bytes...`, 'warn');
     
+    // 4. Connect and Flash
     const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x16d0, productId: 0x0753 }] });
     const client = new Micronucleus(device);
     await client.upload(firmBuffer);
@@ -755,7 +1061,10 @@ document.getElementById('burnBtn').addEventListener('click', async () => {
   }
 });
 
-// --- INO GENERATOR (ESCAPE POD) ---
+// ==========================================
+//      INO GENERATOR (ESCAPE POD)
+// ==========================================
+
 document.getElementById('genInoBtn').addEventListener('click', () => {
   const hwValue = document.getElementById('hwModel').value;
   const isDual = hwValue.includes("dual");
@@ -766,13 +1075,14 @@ document.getElementById('genInoBtn').addEventListener('click', () => {
     let inoText = TEMPLATE_INO;
     let cfgText = TEMPLATE_CFG;
     
-    // 2. Patch Config
+    // 1. Patch Configuration in the generated file
     if (isDual) cfgText = cfgText.replace(/#define DUAL_LED_MODE .*/, "#define DUAL_LED_MODE 1");
     else cfgText = cfgText.replace(/#define DUAL_LED_MODE .*/, "#define DUAL_LED_MODE 0");
     
+    // Replace the include with the actual config code
     inoText = inoText.replace('#include "roulette_cfg.h"', "// --- CONFIG INJECTED BY GENERATOR ---\n" + cfgText + "\n// -----------------------------------");
     
-    // 3. Build Byte Array
+    // 2. Compile Payloads
     let t1 = document.getElementById('c1').value.trim();
     let t2 = document.getElementById('c2').value.trim();
     let t3 = document.getElementById('c3').value.trim();
@@ -781,6 +1091,7 @@ document.getElementById('genInoBtn').addEventListener('click', () => {
     const p2 = compileDucky(t2);
     const p3 = compileDucky(t3);
     
+    // 3. Construct Payload Array
     const mem = new Uint8Array(1024).fill(0);
     // Header
     mem[0] = 0xCA; mem[1] = 0xFE; mem[2] = 0xBA; mem[3] = 0xBE;
@@ -803,7 +1114,7 @@ document.getElementById('genInoBtn').addEventListener('click', () => {
     writeP(p2, 6, 7);
     writeP(p3, 8, 9);
     
-    // 4. Stringify Array
+    // 4. Stringify Array for C Source Code
     let cArray = "{\n  ";
     for(let i=0; i<1024; i++) {
         cArray += "0x" + mem[i].toString(16).padStart(2,'0').toUpperCase();
@@ -812,13 +1123,13 @@ document.getElementById('genInoBtn').addEventListener('click', () => {
     }
     cArray += "}";
     
-    // 5. Inject into Source
+    // 5. Inject Array into Source
     const startMarker = "const uint8_t PAYLOAD_STORAGE[1024] PROGMEM __attribute__((used)) =";
     const regex = /const uint8_t PAYLOAD_STORAGE\[1024\] PROGMEM __attribute__\(\(used\)\) = \{[\s\S]*?\};/;
     
     inoText = inoText.replace(regex, startMarker + " " + cArray + ";");
     
-    // 6. Download
+    // 6. Trigger Download
     const blob = new Blob([inoText], {type: "text/x-c++src"});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
